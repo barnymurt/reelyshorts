@@ -14,6 +14,16 @@ pieces/*/audio/*.wav
 pieces/*/audio/*.mp3
 pieces/*/.build/
 
+# Style demo build artifacts (rebuildable from src/)
+styles/*/demo/index.html
+styles/*/demo/storyboard.png
+styles/*/demo/tile.png
+styles/*/demo/contact-sheet.png
+styles/*/demo/frames/
+
+# Reference measurer side products
+refs/**/*.trim.png
+
 # Gallery
 gallery/dist/
 gallery/.vite/
