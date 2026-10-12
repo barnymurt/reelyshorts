@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/json",
+  "provider": "elevenlabs",
+  "voice_id": null,
+  "voice_name": null,
+  "model_id": "eleven_multilingual_v2",
+  "samples_dir": "brands/thedigitalstag/voice-samples",
+  "setup_command": "reelyshorts voice setup",
+  "notes": "Run `reelyshorts voice setup` after placing 3-5 minutes of clean voice recordings in voice-samples/. The setup flow will create an ElevenLabs Instant Voice Clone, save the returned voice_id here, and write a sample to test the clone.",
+  "fallback": {
+    "behavior": "text-only",
+    "captions": "auto",
+    "music": "procedural"
+  }
+}

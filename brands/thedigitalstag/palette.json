@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "thedigitalstag",
+  "version": "0.1.0",
+  "description": "Brand identity for thedigitalstag — independent creator of Gero-wallet explainer content.",
+  "primary_color": "#1C3E69",
+  "palette": {
+    "stag_blue": {
+      "deep": "#0F2A4A",
+      "primary": "#1C3E69",
+      "mid": "#324975",
+      "light": "#5A7FA0"
+    },
+    "neutral": {
+      "cool_grey": "#B2B7B7",
+      "warm_grey": "#BABBC2",
+      "off_white": "#F0F0EE",
+      "paper": "#EAEEF2"
+    },
+    "dark_mode": {
+      "bg": "#0E1A28",
+      "surface": "#142A3E",
+      "border": "#243A52"
+    },
+    "text": {
+      "on_light": "#1C3E69",
+      "on_dark": "#F0F0EE",
+      "muted_on_dark": "#9FB0BF"
+    },
+    "gero_accent": {
+      "gradient_start": "#0CA3FB",
+      "gradient_end": "#00EAEF",
+      "solid": "#00A8C8",
+      "use": "Gero-wallet content only. Signals 'this piece is about Gero'. Never use on thedigitalstag primary content."
+    }
+  },
+  "voice_tone": {
+    "calm": "We don't shout. Confidence is quiet.",
+    "knowledgeable": "We've actually used the product. Speak from experience.",
+    "independent": "We're a fan channel, not the brand. Be clear about it.",
+    "specific": "Numbers, names, facts. Vague claims read as ads."
+  },
+  "logo": {
+    "primary": "brands/thedigitalstag/logos/stag-circle.png",
+    "original_photo": "brands/thedigitalstag/logos/stag-original.png",
+    "usage": {
+      "min_size_px": 64,
+      "clear_space_em": 0.5,
+      "do_not": [
+        "recolor the stag",
+        "rotate the stag",
+        "stretch the stag",
+        "place on busy backgrounds without the dark or paper surface"
+      ]
+    }
+  },
+  "type": {
+    "primary": "Inter",
+    "primary_fallbacks": ["system-ui", "Segoe UI", "Roboto", "sans-serif"],
+    "weights": [400, 500, 600, 700],
+    "mono": "JetBrains Mono",
+    "mono_fallbacks": ["Consolas", "monospace"]
+  },
+  "disclaimer": "Independent Gero content creator. Not affiliated with GeroWallet / A.D. Labs LTD.",
+  "see_also": "BRAND.md, LEGAL.md"
+}

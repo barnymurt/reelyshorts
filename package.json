@@ -1,0 +1,44 @@
+{
+  "name": "reelyshorts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI + local UI to generate on-brand short-form video content for thedigitalstag (Gero-inspired).",
+  "bin": {
+    "reelyshorts": "./bin/reelyshorts.mjs"
+  },
+  "scripts": {
+    "brand:show": "node bin/reelyshorts.mjs brand show",
+    "brand:export": "node bin/reelyshorts.mjs brand export",
+    "voice:setup": "node bin/reelyshorts.mjs voice setup",
+    "voice:test": "node bin/reelyshorts.mjs voice test",
+    "new": "node bin/reelyshorts.mjs new",
+    "export": "node bin/reelyshorts.mjs export",
+    "gallery": "node bin/reelyshorts.mjs gallery",
+    "build": "node tools/animate/tools/build.mjs",
+    "render": "node tools/animate/tools/export.mjs",
+    "review": "node tools/animate/tools/review.mjs",
+    "storyboard": "node tools/animate/tools/storyboard.mjs",
+    "dev:gallery": "vite",
+    "build:gallery": "vite build"
+  },
+  "dependencies": {
+    "@11labs/elevenlabs-js": "^2.5.0",
+    "chokidar": "^4.0.1",
+    "commander": "^12.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "playwright": "^1.49.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.10"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "thedigitalstag",
+  "license": "MIT"
+}

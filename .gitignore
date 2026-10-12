@@ -1,0 +1,48 @@
+node_modules/
+dist/
+.cache/
+.tmp/
+
+.env
+.env.local
+.env.*.local
+
+# Pieces
+pieces/*/dist/
+pieces/*/frames/
+pieces/*/audio/*.wav
+pieces/*/audio/*.mp3
+pieces/*/.build/
+
+# Gallery
+gallery/dist/
+gallery/.vite/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log
+
+# Python (faster-whisper venv)
+.venv/
+__pycache__/
+*.pyc
+
+# Test
+coverage/
+
+# Voice samples (private)
+brands/*/voice-samples/
+!brands/*/voice-samples/.gitkeep
+
+# User-provided wallet build
+refs/gero-source/gero-wallet-*.zip
+
+# Pieces in progress (anything that starts with a dot is hidden)
+pieces/.*/
