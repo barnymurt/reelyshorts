@@ -61,7 +61,6 @@
     "mono": "JetBrains Mono",
     "mono_fallbacks": ["Consolas", "monospace"]
   },
-  "disclaimer": "Fan content. GeroWallet is a trademark of A.D. Labs LTD.",
   "tagline": "Locking horns with digital assets",
   "see_also": "BRAND.md, LEGAL.md"
 }

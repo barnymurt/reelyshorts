@@ -128,20 +128,13 @@ The voice used in pieces is a clone of thedigitalstag's own voice, hosted on Ele
 
 ---
 
-## 7. Disclaimer
+## 7. No disclaimer
 
-Every published piece carries the disclaimer:
-
-> Fan content. GeroWallet is a trademark of A.D. Labs LTD.
+thedigitalstag does not carry a GeroWallet disclaimer in its pieces. The channel names GeroWallet and links to `gerowallet.io` under nominative fair use (to identify the product being discussed). Viewers understand the channel is not affiliated with GeroWallet / A.D. Labs LTD from context (independent creator, own brand, own tagline).
 
 The channel's own tagline is **"Locking horns with digital assets"** — a stag-themed play on words about thedigitalstag's space. It does not name Gero or any other brand.
 
-Where it appears:
-- End card, full lockup.
-- Captions (`caption.disclaimer` in each piece's `piece.json`).
-- YouTube description and About section.
-
-This is a brand requirement, not a legal one. The Gero wallet code is open source under Apache 2.0, but the **GeroWallet** name, antler mark, and logo are trademarks of A.D. Labs LTD. We never render the Gero mark or wordmark in our pieces; we use the wallet's actual UI screenshots (factual depiction) and rely on nominative use of the "GeroWallet" name in voice and captions to identify the product. See `LEGAL.md` for the full reasoning.
+Note: removing the disclaimer is a creator-side choice. The Gero wallet code is open source under Apache 2.0, but the **GeroWallet** name, antler mark, and logo are trademarks of A.D. Labs LTD. The channel still uses factual UI screenshots and nominative use of the "GeroWallet" name in voice and captions to identify the product. See `LEGAL.md` for the full reasoning and the residual risk.
 
 ---
 

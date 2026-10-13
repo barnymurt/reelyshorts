@@ -1,0 +1,15 @@
+{
+  "_note": "Platform-ready captions for market-data-table (#2 in the series). Real data from the screenshot at capture time.",
+  "twitter": {
+    "max_chars": 280,
+    "text": "Which Cardano token traded the most today? Not ADA. Not SNEK. The Gero Market tab ranks every Cardano DEX token, refreshed live from 11 venues. gerowallet.io/wallet/market-data/"
+  },
+  "instagram": {
+    "max_chars": 2200,
+    "text": "Which Cardano token traded the most today?\n\nNot ADA. Not SNEK.\n\nThe Gero Market tab ranks every Cardano DEX token — refreshed live from 11 venues, checked against real trades. Every token. One table.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+  },
+  "youtube": {
+    "max_chars": 5000,
+    "text": "Which Cardano token traded the most today?\n\nNot ADA. Not SNEK.\n\nThe Gero Market tab ranks every Cardano DEX token — refreshed live from 11 venues, checked against real trades. One row per token, not per pool. The actual top token by volume is whoever it is that day.\n\nThis piece was built from a real screenshot of the live Gero Market page. The numbers in the reveal frame are the real numbers at capture time.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+  }
+}
