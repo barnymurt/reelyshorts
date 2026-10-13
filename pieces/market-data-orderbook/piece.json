@@ -1,0 +1,15 @@
+{
+  "name": "market-data-orderbook",
+  "title": "You're only seeing half the order book — 12s",
+  "format": { "width": 1080, "height": 1920, "fps": 24, "bpm": 120, "duration": 12.0, "frames": 288 },
+  "storyFormat": "frame sequence: hook → sharpen (1 venue) → reveal (all 11) → CTA",
+  "style": "thedigitalstag",
+  "brand": "thedigitalstag",
+  "voice": null,
+  "review": { "safe": { "top": 240, "bottom": 420, "right": 140 }, "refs": {} },
+  "captions": {
+    "twitter": "You're only seeing half the order book. That's one venue. Gero reads all 11 and shows you the combined depth. gerowallet.io/wallet/market-data/",
+    "instagram": "You're only seeing half the order book.\n\nThat's one venue.\n\nGero reads all 11 Cardano DEXes and shows you the combined depth. Every trade, every bid, every ask, in one view.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX",
+    "youtube": "You're only seeing half the order book.\n\nThat's one venue.\n\nGero reads all 11 Cardano DEXes and shows you the combined depth. Every trade, every bid, every ask, in one view — priced from the pool where the market actually trades, checked against observed trades.\n\nThis piece was built from a real screenshot of the live Gero Market page. The numbers in the reveal frame are the real numbers at capture time.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+  }
+}
