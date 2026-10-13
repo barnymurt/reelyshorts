@@ -63,7 +63,6 @@ const TIMELINE = {
     book:      7.60,
     stat:      9.40,
     pill:     10.40,
-    tease:    11.40,
   },
   acts: [
     { name: '1 Problem', role: 'build',   t0: 0.0, t1: 3.0 },
@@ -813,10 +812,10 @@ function dsWatermark(o = {}) {
     ctx.textAlign = 'left';
     ctx.fillStyle = DSB.type;
     ctx.fillText('thedigitalstag', cx + r + 22, cy + 2);
-    // small wordmark subtitle in muted
+    // small wordmark tagline (stag-themed, about our space)
     ctx.font = `400 16px ${DSF}`;
     ctx.fillStyle = DSB.muted;
-    ctx.fillText('Independent Gero content', cx + r + 22, cy + 28);
+    ctx.fillText('Locking horns with digital assets', cx + r + 22, cy + 28);
     ctx.restore();
   };
   if (DEFER) DEFER.push(f); else f();
@@ -1228,21 +1227,6 @@ function sceneFix() {
     ctx.save();
     ctx.globalAlpha = pill;
     dsPill('gerowallet.io/wallet/market-data', CX, 1340, 30);
-    ctx.restore();
-  }
-  // the loop tease: "Tomorrow: 60-second order book" (fades in at 11.4s)
-  const tease = clamp((TT - 11.4) * 4);
-  if (tease > 0) {
-    ctx.save();
-    ctx.globalAlpha = tease;
-    ctx.font = `500 22px ${DSF}`;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = DSB.muted;
-    ctx.fillText('Tomorrow: a 60-second order book', CX, 1440);
-    // a small "•" separator
-    ctx.fillText('•', CX, 1465);
-    ctx.fillText('Part 2 of the Gero series', CX, 1485);
     ctx.restore();
   }
   // watermark + hero

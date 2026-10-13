@@ -338,21 +338,6 @@ function sceneFix() {
     dsPill('gerowallet.io/wallet/market-data', CX, 1340, 30);
     ctx.restore();
   }
-  // the loop tease: "Tomorrow: 60-second order book" (fades in at 11.4s)
-  const tease = clamp((TT - 11.4) * 4);
-  if (tease > 0) {
-    ctx.save();
-    ctx.globalAlpha = tease;
-    ctx.font = `500 22px ${DSF}`;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = DSB.muted;
-    ctx.fillText('Tomorrow: a 60-second order book', CX, 1440);
-    // a small "•" separator
-    ctx.fillText('•', CX, 1465);
-    ctx.fillText('Part 2 of the Gero series', CX, 1485);
-    ctx.restore();
-  }
   // watermark + hero
   dsWatermark();
   dsHero(180, 1380, 50, { key: 'h2', mood: 'wow' });

@@ -134,6 +134,8 @@ Every published piece carries the disclaimer:
 
 > Independent Gero content creator. Not affiliated with GeroWallet / A.D. Labs LTD.
 
+The channel's own tagline is **"Locking horns with digital assets"** — a stag-themed play on words about thedigitalstag's space. It does not name Gero or any other brand.
+
 Where it appears:
 - End card, full lockup.
 - Captions (`caption.disclaimer` in each piece's `piece.json`).

@@ -29,7 +29,6 @@ A 12s 9:16 piece for thedigitalstag, explaining https://gerowallet.io/wallet/mar
 | 7.6    | fix     | order book: 5 asks, "SPREAD 0.0003", 5 bids |
 | 9.4    | fix     | "11 venues. Real trades. 1 wallet." (the stat) |
 | 10.4   | fix     | "gerowallet.io/wallet/market-data" cyan pill (the CTA) |
-| 11.4   | fix     | "Tomorrow: a 60-second order book / • / Part 2 of the Gero series" (the loop tease) |
 | 12.0   | loop    | back to the question |
 
 ## Sound plan

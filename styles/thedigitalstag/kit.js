@@ -202,10 +202,10 @@ function dsWatermark(o = {}) {
     ctx.textAlign = 'left';
     ctx.fillStyle = DSB.type;
     ctx.fillText('thedigitalstag', cx + r + 22, cy + 2);
-    // small wordmark subtitle in muted
+    // small wordmark tagline (stag-themed, about our space)
     ctx.font = `400 16px ${DSF}`;
     ctx.fillStyle = DSB.muted;
-    ctx.fillText('Independent Gero content', cx + r + 22, cy + 28);
+    ctx.fillText('Locking horns with digital assets', cx + r + 22, cy + 28);
     ctx.restore();
   };
   if (DEFER) DEFER.push(f); else f();
