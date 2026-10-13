@@ -1,0 +1,15 @@
+{
+  "name": "market-data-spread",
+  "title": "3 tokens. Same minute. 3 prices. — 12s",
+  "format": { "width": 1080, "height": 1920, "fps": 24, "bpm": 120, "duration": 12.0, "frames": 288 },
+  "storyFormat": "frame sequence: hook -> sharpen -> liquidity -> reveal (screenshot) -> pay -> CTA",
+  "style": "thedigitalstag",
+  "brand": "thedigitalstag",
+  "voice": null,
+  "review": { "safe": { "top": 240, "bottom": 420, "right": 140 }, "refs": {} },
+  "captions": {
+    "twitter": "3 tokens. Same minute. 3 prices. Liquidity is split across 11 Cardano DEXes. Gero shows you all of them. gerowallet.io/wallet/market-data/",
+    "instagram": "3 tokens. Same minute. 3 prices.\n\nWhy?\n\nLiquidity is split across 11 Cardano DEXes. Every token. Multiple pools. Multiple prices. Until you read them all in one place.\n\nGero shows you all of them.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX",
+    "youtube": "3 tokens. Same minute. 3 prices.\n\nWhy?\n\nLiquidity is split across 11 Cardano DEXes. Every native token with a pool on a Cardano DEX gets a price from the pool where it actually trades, and checked against real trades. One row per token, not per pool. The actual numbers are whoever it is that day.\n\nThis piece was built from a real screenshot of the live Gero Market page. The numbers in the reveal frame are the real numbers at capture time.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+  }
+}

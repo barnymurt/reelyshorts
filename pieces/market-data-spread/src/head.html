@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>market-data-spread — 12s</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0E1A28; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { height: min(100vh, calc(100vw * 16 / 9)); width: auto; aspect-ratio: 9 / 16; display: block; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+"use strict";
+// =====================================================================
+//  MARKET DATA SPREAD (#4 in the series) — 9:16, 12.0s @ 120 BPM, 24fps.
+//  6 hard-cut frames (one extra "liquidity" frame between sharpen and reveal):
+//    1 (0-1.6s)   HOOK: "3 tokens. Same minute. 3 prices."
+//    2 (1.6-3.0s) SHARPEN: "Why?" (cyan)
+//    3 (3.0-4.4s) LIQUIDITY: "Liquidity is split / across 11 DEXes."
+//    4 (4.4-8.0s) REVEAL: Gero screenshot. MUSIC DROP at 4.4s.
+//    5 (8-10s)    PAY: "Gero shows you / all of them." (in cyan)
+//    6 (10-12s)   CTA: gerowallet.io pill + teaser for #5
+//  Build: node tools/animate/tools/build.mjs pieces/market-data-spread
+// =====================================================================
+const FPS = 24, W = 1080, H = 1920;
+const BPM = 120, BEAT = 60 / BPM, E8 = BEAT / 2, E16 = BEAT / 4;
+const DURATION = 12.0;
+const NFRAMES = Math.round(DURATION * FPS);
+const LOOP_T = NFRAMES / FPS;
+const SAFE = { top: 240, bottom: 420, right: 140 };
+const HAND = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+const CX = 540;
+
+const ERA_LIST = [
+  [0,   1.6, () => sceneHook()],
+  [1.6, 3.0, () => sceneSharpen()],
+  [3.0, 4.4, () => sceneLiquidity()],
+  [4.4, 8.0, () => sceneReveal()],
+  [8.0, 10.0, () => scenePay()],
+  [10.0, 12.0, () => sceneCta()],
+];
+const SHOTS = [
+  ['hook',      0, 0.0,  1.6,  'the question'],
+  ['sharpen',   1, 1.6,  3.0,  'why?'],
+  ['liquidity', 2, 3.0,  4.4,  'split across 11 DEXes'],
+  ['reveal',    3, 4.4,  8.0,  'Gero reads all 11'],
+  ['pay',       4, 8.0, 10.0,  'all of them'],
+  ['cta',       5, 10.0, 12.0, 'market tab CTA'],
+];
+const TIMELINE = {
+  width: W, height: H, fps: FPS, bpm: BPM, duration: DURATION, frames: NFRAMES, loop: LOOP_T, safe: SAFE,
+  format: 'frame-sequence',
+  shots: SHOTS.map(([key, era, t0, t1, title], i) => ({ id: i + 1, key, era, t0, t1, title })),
+  cuts: [0.0, 1.6, 3.0, 4.4, 8.0, 10.0],
+  morphs: [],
+  cues: {
+    hook:      0.20,
+    sharpen:   1.80,
+    liquidity: 3.20,
+    reveal:    4.60,
+    pay:       8.20,
+    cta:      10.20,
+    teaser:   10.80,
+  },
+  acts: [
+    { name: '1 Hook',     role: 'build',  t0: 0.0, t1: 4.4 },
+    { name: '2 Reveal',   role: 'gift',   t0: 4.4, t1: 8.0 },
+    { name: '3 Pay+CTA',  role: 'goodbye',t0: 8.0, t1: 12.0 },
+  ],
+  board: [
+    { t: 1.4,  title: '3 tokens. Same minute. 3 prices.',  sound: 'soft plucks',     next: 'Why?' },
+    { t: 5.0,  title: 'Gero reads all 11',                   sound: 'DROP + chord stab', next: 'Gero shows you all of them.' },
+    { t: 10.5, title: 'gerowallet.io/wallet/market-data',     sound: 'a soft stab',      next: 'loops' },
+  ],
+  narration: [],
+};
+window.TIMELINE = TIMELINE;
