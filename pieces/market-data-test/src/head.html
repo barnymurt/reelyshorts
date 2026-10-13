@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Data in Gero — 12s test</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0E1A28; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { height: min(100vh, calc(100vw * 16 / 9)); width: auto; aspect-ratio: 9 / 16; display: block; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+"use strict";
+// =====================================================================
+//  MARKET DATA TEST — 9:16, 12.0s @ 120 BPM, 24fps, F4 mission. 4 beats + payoff.
+//  No voice; upbeat dancey procedural score. Style: thedigitalstag.
+//  Build: node tools/animate/tools/build.mjs pieces/market-data-test
+// =====================================================================
+const FPS = 24, W = 1080, H = 1920;
+const BPM = 120, BEAT = 60 / BPM, E8 = BEAT / 2, E16 = BEAT / 4;
+const DURATION = 12.0;
+const NFRAMES = Math.round(DURATION * FPS);
+const LOOP_T = NFRAMES / FPS;
+const SAFE = { top: 240, bottom: 420, right: 140 };
+const HAND = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+const CX = 540;
+
+const ERA_LIST = [
+  [0,  6,  () => sceneList()],
+  [6, 12,  () => sceneCharts()],
+];
+const SHOTS = [
+  ['list',   0, 0.0,  6.0, 'the want: live data, in the wallet'],
+  ['charts', 1, 6.0, 12.0, 'the proof: 11 venues, real trades, payoff'],
+];
+const TIMELINE = {
+  width: W, height: H, fps: FPS, bpm: BPM, duration: DURATION, frames: NFRAMES, loop: LOOP_T, safe: SAFE,
+  format: 'mission',
+  shots: SHOTS.map(([key, era, t0, t1, title], i) => ({ id: i + 1, key, era, t0, t1, title })),
+  cuts: [0.0, 6.0],
+  morphs: [6.0],
+  cues: {
+    tag:      0.10,
+    title:    0.40,
+    card:     0.80,
+    rows:     1.40,
+    glow:     2.40,
+    tag2:     6.10,
+    title2:   6.40,
+    chart:    6.80,
+    book:     8.00,
+    nexus:    9.20,
+    stat:    10.00,
+    pill:    11.20,
+  },
+  acts: [
+    { name: '1 Want',     role: 'build',   t0: 0.0, t1: 3.0 },
+    { name: '2 Setup',    role: 'journey', t0: 3.0, t1: 6.0 },
+    { name: '3 Proof',    role: 'peak',    t0: 6.0, t1: 9.0 },
+    { name: '4 Payoff',   role: 'gift',    t0: 9.0, t1: 12.0 },
+  ],
+  board: [
+    { t: 2.5,  title: 'I want live data, in my wallet',  sound: 'a driving 4-on-the-floor + plucks', next: 'Gero\'s Market tab delivers' },
+    { t: 8.0,  title: '11 venues, real trades',          sound: 'plucks on every row, a sweep up',   next: 'all in your non-custodial wallet' },
+    { t: 10.5, title: 'Verified, public, in your wallet', sound: 'a chord stab on the payoff',        next: 'loops' },
+  ],
+  narration: [],
+};
+window.TIMELINE = TIMELINE;

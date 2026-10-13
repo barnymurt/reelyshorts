@@ -1,0 +1,15 @@
+{
+  "name": "market-data-test",
+  "title": "Market Data in Gero — 12s test",
+  "format": { "width": 1080, "height": 1920, "fps": 24, "bpm": 120, "duration": 12.0, "frames": 288 },
+  "storyFormat": "F4 mission (4 beats + payoff, cuts on the beat)",
+  "style": "thedigitalstag",
+  "brand": "thedigitalstag",
+  "voice": null,
+  "review": { "safe": { "top": 240, "bottom": 420, "right": 140 }, "refs": {} },
+  "captions": {
+    "twitter": "Every Cardano token, every DEX venue. Live prices, real order books, 11 sources — all in your Gero wallet. gerowallet.io/wallet/market-data/",
+    "instagram": "Live market data in your Gero wallet.\n\nEvery Cardano token, every DEX venue. Real-time prices, candles, order books, trades — indexed from 11 Cardano DEX venues, checked against real trades.\n\nThis is what verified market data looks like.\n\n#Gero #GeroWallet #Cardano #Crypto",
+    "youtube": "Live market data in your Gero wallet.\n\nEvery Cardano token, every DEX venue. Live prices from 11 sources, candles with indicators, order books, and trades — all in one non-custodial wallet whose code is public.\n\nThe Market tab and every token page in the wallet are fed by Nexus, indexed from eleven Cardano DEX venues and checked against real trades.\n\n🔗 gerowallet.io/wallet/market-data/\n\nIndependent Gero content creator. Not affiliated with GeroWallet / A.D. Labs LTD.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+  }
+}

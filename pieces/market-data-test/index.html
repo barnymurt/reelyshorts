@@ -1,0 +1,1634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Data in Gero — 12s test</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0E1A28; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { height: min(100vh, calc(100vw * 16 / 9)); width: auto; aspect-ratio: 9 / 16; display: block; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+"use strict";
+// =====================================================================
+//  MARKET DATA TEST — 9:16, 12.0s @ 120 BPM, 24fps, F4 mission. 4 beats + payoff.
+//  No voice; upbeat dancey procedural score. Style: thedigitalstag.
+//  Build: node tools/animate/tools/build.mjs pieces/market-data-test
+// =====================================================================
+const FPS = 24, W = 1080, H = 1920;
+const BPM = 120, BEAT = 60 / BPM, E8 = BEAT / 2, E16 = BEAT / 4;
+const DURATION = 12.0;
+const NFRAMES = Math.round(DURATION * FPS);
+const LOOP_T = NFRAMES / FPS;
+const SAFE = { top: 240, bottom: 420, right: 140 };
+const HAND = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+const CX = 540;
+
+const ERA_LIST = [
+  [0,  6,  () => sceneList()],
+  [6, 12,  () => sceneCharts()],
+];
+const SHOTS = [
+  ['list',   0, 0.0,  6.0, 'the want: live data, in the wallet'],
+  ['charts', 1, 6.0, 12.0, 'the proof: 11 venues, real trades, payoff'],
+];
+const TIMELINE = {
+  width: W, height: H, fps: FPS, bpm: BPM, duration: DURATION, frames: NFRAMES, loop: LOOP_T, safe: SAFE,
+  format: 'mission',
+  shots: SHOTS.map(([key, era, t0, t1, title], i) => ({ id: i + 1, key, era, t0, t1, title })),
+  cuts: [0.0, 6.0],
+  morphs: [6.0],
+  cues: {
+    tag:      0.10,
+    title:    0.40,
+    card:     0.80,
+    rows:     1.40,
+    glow:     2.40,
+    tag2:     6.10,
+    title2:   6.40,
+    chart:    6.80,
+    book:     8.00,
+    nexus:    9.20,
+    stat:    10.00,
+    pill:    11.20,
+  },
+  acts: [
+    { name: '1 Want',     role: 'build',   t0: 0.0, t1: 3.0 },
+    { name: '2 Setup',    role: 'journey', t0: 3.0, t1: 6.0 },
+    { name: '3 Proof',    role: 'peak',    t0: 6.0, t1: 9.0 },
+    { name: '4 Payoff',   role: 'gift',    t0: 9.0, t1: 12.0 },
+  ],
+  board: [
+    { t: 2.5,  title: 'I want live data, in my wallet',  sound: 'a driving 4-on-the-floor + plucks', next: 'Gero\'s Market tab delivers' },
+    { t: 8.0,  title: '11 venues, real trades',          sound: 'plucks on every row, a sweep up',   next: 'all in your non-custodial wallet' },
+    { t: 10.5, title: 'Verified, public, in your wallet', sound: 'a chord stab on the payoff',        next: 'loops' },
+  ],
+  narration: [],
+};
+window.TIMELINE = TIMELINE;
+// =====================================================================
+//  kit/core.js — seeded RNG, math, easing, palette, geometry, the hand-drawn drawing kit
+//  (wobble on the boil, ink, paint, hatch, pencil, stipple, grain), cameras, mono text.
+//  Needs from the piece head: FPS, W, H. Render state: ctx, F (frame), B (boil = floor(F/2)).
+// =====================================================================
+
+// ---------------------------------------------------------------------
+//  seeded RNG
+// ---------------------------------------------------------------------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hash(...xs) {
+  let h = 2166136261 >>> 0;
+  for (const x of xs) {
+    const s = String(x);
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= 124; h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function RNG(...xs) {
+  const f = mulberry32(hash(...xs));
+  return {
+    f,
+    r: (a, b) => a + (b - a) * f(),
+    n: (amt) => (f() * 2 - 1) * amt,
+    i: (a, b) => a + Math.floor(f() * (b - a + 1)),
+    pick: (arr) => arr[Math.floor(f() * arr.length)],
+  };
+}
+
+// ---------------------------------------------------------------------
+//  math
+// ---------------------------------------------------------------------
+const TAU = Math.PI * 2, DEG = Math.PI / 180;
+const clamp = (x, a = 0, b = 1) => (x < a ? a : x > b ? b : x);
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+// has absolute time t reached cut time c? (cuts snap to the nearest frame, like shot boundaries)
+const past = (t, c) => Math.round(t * FPS + 1e-6) >= Math.round(c * FPS);
+const dist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+const EZ = {
+  o2: (t) => 1 - (1 - clamp(t)) ** 2,
+  o3: (t) => 1 - (1 - clamp(t)) ** 3,
+  i2: (t) => clamp(t) ** 2,
+  i3: (t) => clamp(t) ** 3,
+  io: (t) => { t = clamp(t); return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2; },
+  back: (t) => { t = clamp(t) - 1; return 1 + 2.70158 * t * t * t + 1.70158 * t * t; },
+};
+
+// ---------------------------------------------------------------------
+//  render state
+// ---------------------------------------------------------------------
+let ctx = null;   // current 2d context
+let F = 0;        // absolute frame index
+let B = 0;        // boil index — reseeds every 2 frames (Math.floor(t*12))
+
+const C = {
+  ink: '#3a2417', cream: '#efe5cf', paper: '#f4ecd9', paperLine: 'rgba(90,130,190,0.32)',
+  orange: '#e58a4e', orangeD: '#c3622e', orangeL: '#f4b27c', terra: '#d97757',
+  rose: '#d98b8b', roseD: '#b0616a', roseL: '#efb9b0',
+  wood: '#d6a466', woodD: '#a8773f', woodL: '#e9c48f',
+  sky: '#9cc4d6', skyD: '#6f9fb8', skyL: '#c9e1ea',
+  teal: '#3d9f96', tealL: '#86c9be',
+  yellow: '#f0c55a', yellowL: '#f7dd92',
+  green: '#5f9c5c', greenL: '#a3cf92',
+  red: '#d4382c', redL: '#ea7a6c',
+  skin: '#ebb68f', skinD: '#c7815d', skinL: '#f7d4b4',
+  lav: 'rgba(104,112,214,0.7)', lavS: 'rgba(104,112,214,0.42)',
+  navy: '#0c0d1c', navy2: '#15173a', peri: '#c8d0f0', periD: '#7c86c4', periS: 'rgba(150,164,230,0.20)',
+  cyan: '#52d6c4', mag: '#e0368f', glow: '#5de37a', white: '#f4f6ff',
+};
+const RAINBOW = ['#f0d042', '#e050b8', '#46cde0', '#7ad866', '#a47ef0'];
+const MONO = 'Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Courier New", monospace';   // Windows first, then macOS / Linux
+
+// ---------------------------------------------------------------------
+//  geometry
+// ---------------------------------------------------------------------
+function ellipsePts(cx, cy, rx, ry, rot = 0, n = 64, a0 = 0, a1 = TAU) {
+  const P = [], c = Math.cos(rot), s = Math.sin(rot), full = Math.abs(a1 - a0 - TAU) < 1e-6;
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (a1 - a0) * i / (full ? n : n - 1);
+    const x = Math.cos(a) * rx, y = Math.sin(a) * ry;
+    P.push([cx + x * c - y * s, cy + x * s + y * c]);
+  }
+  return P;
+}
+function rrectPts(x, y, w, h, r, n = 6) {
+  r = Math.min(r, w / 2, h / 2);
+  const P = [], cs = [[x + w - r, y + r, -Math.PI / 2], [x + w - r, y + h - r, 0], [x + r, y + h - r, Math.PI / 2], [x + r, y + r, Math.PI]];
+  for (const [cx, cy, a0] of cs) for (let i = 0; i <= n; i++) { const a = a0 + (Math.PI / 2) * i / n; P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+  return P;
+}
+function arcPts(cx, cy, r, a0, a1, n = 18, sy = 1) {
+  const P = [];
+  for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * sy]); }
+  return P;
+}
+function xform(P, tx, ty, rot = 0, sx = 1, sy = sx) {
+  const c = Math.cos(rot), s = Math.sin(rot);
+  return P.map(([x, y]) => [tx + x * sx * c - y * sy * s, ty + x * sx * s + y * sy * c]);
+}
+function bbox(P, pad = 0) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const [x, y] of P) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+  return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
+}
+function resample(P, closed, step) {
+  const out = [], n = P.length, m = closed ? n : n - 1;
+  for (let i = 0; i < m; i++) {
+    const a = P[i], b = P[(i + 1) % n], k = Math.max(1, Math.ceil(dist(a, b) / step));
+    for (let j = 0; j < k; j++) out.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]);
+  }
+  if (!closed) out.push(P[n - 1]);
+  return out;
+}
+function pathLen(P) { let L = 0; for (let i = 1; i < P.length; i++) L += dist(P[i - 1], P[i]); return L; }
+function subPath(P, frac) {
+  let want = pathLen(P) * clamp(frac);
+  const out = [P[0]];
+  for (let i = 1; i < P.length; i++) {
+    const d = dist(P[i - 1], P[i]);
+    if (want >= d) { out.push(P[i]); want -= d; }
+    else { const k = want / (d || 1); out.push([lerp(P[i - 1][0], P[i][0], k), lerp(P[i - 1][1], P[i][1], k)]); break; }
+  }
+  return out;
+}
+function pointAt(P, frac) { const S = subPath(P, frac); return S[S.length - 1]; }
+
+// ---------------------------------------------------------------------
+//  drawing kit — boil, sketchy lines, hatching, stipple, pencil, grain
+// ---------------------------------------------------------------------
+// smooth hand wobble along the normal; reseeded every boil step
+function wobble(P, closed, amt, key, step = 7) {
+  const Q = resample(P, closed, step), n = Q.length;
+  const R = RNG('wob', key, B);
+  const f1 = R.r(0.012, 0.03), f2 = R.r(0.05, 0.1), p1 = R.r(0, TAU), p2 = R.r(0, TAU);
+  const sx = R.n(amt * 0.5), sy = R.n(amt * 0.5);
+  const out = new Array(n); let s = 0;
+  for (let i = 0; i < n; i++) {
+    const a = Q[closed ? (i - 1 + n) % n : Math.max(0, i - 1)], b = Q[closed ? (i + 1) % n : Math.min(n - 1, i + 1)];
+    const nx = a[1] - b[1], ny = b[0] - a[0], l = Math.hypot(nx, ny) || 1;
+    if (i) s += dist(Q[i - 1], Q[i]);
+    const o = amt * (0.75 * Math.sin(s * f1 + p1) + 0.35 * Math.sin(s * f2 + p2));
+    out[i] = [Q[i][0] + nx / l * o + sx, Q[i][1] + ny / l * o + sy];
+  }
+  return out;
+}
+function trace(P, closed) {
+  ctx.beginPath();
+  const n = P.length; if (n < 2) return;
+  if (closed) {
+    ctx.moveTo((P[n - 1][0] + P[0][0]) / 2, (P[n - 1][1] + P[0][1]) / 2);
+    for (let i = 0; i < n; i++) { const p = P[i], q = P[(i + 1) % n]; ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+    ctx.closePath();
+  } else {
+    ctx.moveTo(P[0][0], P[0][1]);
+    for (let i = 1; i < n - 1; i++) { const p = P[i], q = P[i + 1]; ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+    ctx.lineTo(P[n - 1][0], P[n - 1][1]);
+  }
+}
+// sketchy stroke. o: closed, color, w, amt, key, alpha, frac (write-on), double
+function ink(P, o = {}) {
+  const closed = !!o.closed, key = o.key ?? 'ink';
+  let Q = o.raw ? P : wobble(P, closed, o.amt ?? 1.8, key);
+  let cl = closed;
+  if (o.frac != null && o.frac < 1) { if (o.frac <= 0) return Q; Q = subPath(closed ? [...Q, Q[0]] : Q, o.frac); cl = false; }
+  ctx.strokeStyle = o.color || C.ink; ctx.lineWidth = o.w ?? 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.globalAlpha = o.alpha ?? 1;
+  trace(Q, cl); ctx.stroke();
+  if (o.double) {
+    let Q2 = wobble(P, closed, (o.amt ?? 1.8) * 1.6 + 0.8, key + '~');
+    if (!cl && closed) Q2 = subPath([...Q2, Q2[0]], o.frac ?? 1);
+    ctx.lineWidth = (o.w ?? 3) * 0.4; ctx.globalAlpha = (o.alpha ?? 1) * 0.55; trace(Q2, cl); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  return Q;
+}
+// filled shape + textures (clipped) + ink outline
+function paint(P, o = {}) {
+  const key = o.key || 'paint';
+  const Q = o.raw ? P : wobble(P, true, o.amt ?? 1.6, key);
+  ctx.save();
+  trace(Q, true);
+  if (o.fill) { ctx.globalAlpha = o.fillAl ?? 1; ctx.fillStyle = o.fill; ctx.fill(); ctx.globalAlpha = 1; }
+  if (o.tex) { ctx.clip(); const bb = bbox(Q, 6); o.tex.forEach((t, i) => texture(bb, { key: key + ':' + i, ...t })); }
+  ctx.restore();
+  if (o.line !== false) {
+    ctx.strokeStyle = o.line || C.ink; ctx.lineWidth = o.w ?? 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.globalAlpha = o.lineAl ?? 1; trace(Q, true); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  return Q;
+}
+function texture(bb, t) {
+  if (t.k === 'hatch') hatch(bb, t);
+  else if (t.k === 'cross') { hatch(bb, t); hatch(bb, { ...t, a: (t.a ?? 0.7) + (t.a2 ?? 1.25), key: t.key + 'x' }); }
+  else if (t.k === 'pencil') pencil(bb, t);
+  else if (t.k === 'stipple') stipple(bb, t);
+  else if (t.k === 'fn') t.fn(bb);
+}
+// parallel hatching inside current clip. t: a angle, gap, c, w, al, dash [min,max], skip, dens(x,y)
+function hatch(bb, t) {
+  const a = t.a ?? 0.7, gap = t.gap ?? 7, S = RNG('hs', t.key), R = RNG('hj', t.key, B);
+  const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2, rad = Math.hypot(bb.x1 - bb.x0, bb.y1 - bb.y0) / 2 + 4;
+  const ca = Math.cos(a), sa = Math.sin(a), dens = t.dens, jit = t.jit ?? 0.9, dash = t.dash;
+  ctx.beginPath();
+  for (let d = -rad; d <= rad; d += gap) {
+    const dd = d + S.n(gap * 0.3);
+    let u = -rad + (dash ? S.r(0, dash[1]) : 0);
+    while (u < rad) {
+      const len = dash ? S.r(dash[0], dash[1]) : rad * 2, u2 = Math.min(rad, u + len);
+      const mu = (u + u2) / 2, mx = cx + ca * mu - sa * dd, my = cy + sa * mu + ca * dd, p = S.f();
+      if (!dens || p < dens(mx, my)) {
+        const e1 = R.n(jit), e2 = R.n(jit);
+        ctx.moveTo(cx + ca * u - sa * (dd + e1), cy + sa * u + ca * (dd + e1));
+        ctx.lineTo(cx + ca * u2 - sa * (dd + e2), cy + sa * u2 + ca * (dd + e2));
+      }
+      u = u2 + (dash ? S.r(t.skip?.[0] ?? 3, t.skip?.[1] ?? 12) : 0);
+    }
+  }
+  ctx.strokeStyle = t.c || C.ink; ctx.lineWidth = t.w ?? 1.2; ctx.globalAlpha = t.al ?? 0.5; ctx.lineCap = 'round';
+  ctx.stroke(); ctx.globalAlpha = 1;
+}
+// colored-pencil diagonal strokes
+function pencil(bb, t) {
+  const S = RNG('ps', t.key), R = RNG('pj', t.key, B);
+  const area = (bb.x1 - bb.x0) * (bb.y1 - bb.y0);
+  const n = Math.min(t.max ?? 6000, t.n ?? Math.floor(area / (t.per ?? 700)));
+  const a = t.a ?? -0.95, L = t.len ?? 14, dens = t.dens;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const x = S.r(bb.x0, bb.x1), y = S.r(bb.y0, bb.y1), p = S.f(), aa = a + S.n(0.22), l = L * (0.5 + S.f() * 0.7);
+    if (dens && p > dens(x, y)) continue;
+    const jx = R.n(1.1), jy = R.n(1.1), dx = Math.cos(aa) * l / 2, dy = Math.sin(aa) * l / 2;
+    ctx.moveTo(x - dx + jx, y - dy + jy); ctx.lineTo(x + dx + jx, y + dy + jy);
+  }
+  ctx.strokeStyle = t.c; ctx.lineWidth = t.w ?? 1.4; ctx.globalAlpha = t.al ?? 0.45; ctx.lineCap = 'round';
+  ctx.stroke(); ctx.globalAlpha = 1;
+}
+// square stipple dots
+function stipple(bb, t) {
+  const S = RNG('ss', t.key), R = RNG('sj', t.key, B);
+  const n = t.n ?? 400, sz = t.s ?? 2.2, dens = t.dens, jit = t.jit ?? 0.8;
+  ctx.fillStyle = t.c; ctx.globalAlpha = t.al ?? 1; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const x = S.r(bb.x0, bb.x1), y = S.r(bb.y0, bb.y1), p = S.f(), s = sz * (0.6 + S.f() * 0.8);
+    if (dens && p > dens(x, y)) continue;
+    ctx.rect(x + R.n(jit), y + R.n(jit), s, s);
+  }
+  ctx.fill(); ctx.globalAlpha = 1;
+}
+// screen-space paper grain, reseeded with the boil
+function grain(o = {}) {
+  ctx.save(); screen();
+  const R = RNG('grain', B), n = o.n ?? 2600;
+  ctx.fillStyle = o.dark || 'rgba(70,45,25,0.13)'; ctx.beginPath();
+  for (let i = 0; i < n; i++) ctx.rect(R.r(0, W), R.r(0, H), 1.7, 1.7);
+  ctx.fill();
+  ctx.fillStyle = o.light || 'rgba(255,250,236,0.20)'; ctx.beginPath();
+  for (let i = 0; i < n; i++) ctx.rect(R.r(0, W), R.r(0, H), 1.9, 1.9);
+  ctx.fill();
+  // a few paper fibres
+  ctx.strokeStyle = 'rgba(80,55,35,0.07)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 0; i < 90; i++) { const x = R.r(0, W), y = R.r(0, H), a = R.r(0, TAU), l = R.r(6, 22); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------
+//  construction lines, rulers, sparks, bursts, rainbow contours
+// ---------------------------------------------------------------------
+function construct(cx, cy, r, o = {}) {
+  const R = RNG('con', o.key ?? 'c', B);
+  ctx.save();
+  ctx.strokeStyle = o.c || C.lav; ctx.lineWidth = o.w ?? 1.4; ctx.globalAlpha = o.al ?? 1; ctx.lineCap = 'round';
+  const a0 = (o.a0 ?? R.r(0, TAU)), sw = o.sweep ?? 1.05;
+  ctx.beginPath(); ctx.ellipse(cx + R.n(1.2), cy + R.n(1.2), r, r * (o.sq ?? 1), o.rot ?? 0, a0, a0 + TAU * sw); ctx.stroke();
+  if (o.cross) { const k = o.cross; ctx.beginPath(); ctx.moveTo(cx - k, cy); ctx.lineTo(cx + k, cy); ctx.moveTo(cx, cy - k); ctx.lineTo(cx, cy + k); ctx.stroke(); }
+  if (o.ticks) {
+    ctx.beginPath();
+    for (let i = 0; i < o.ticks; i++) { const a = i / o.ticks * TAU + (o.rot ?? 0); ctx.moveTo(cx + Math.cos(a) * (r - 6), cy + Math.sin(a) * (r - 6)); ctx.lineTo(cx + Math.cos(a) * (r + 6), cy + Math.sin(a) * (r + 6)); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function cline(x1, y1, x2, y2, o = {}) {
+  const R = RNG('cl', o.key ?? 'l', B);
+  ctx.save(); ctx.strokeStyle = o.c || C.lavS; ctx.lineWidth = o.w ?? 1.2; ctx.globalAlpha = o.al ?? 1;
+  ctx.beginPath(); ctx.moveTo(x1 + R.n(1), y1 + R.n(1)); ctx.lineTo(x2 + R.n(1), y2 + R.n(1)); ctx.stroke(); ctx.restore();
+}
+function ruler(x1, y1, x2, y2, o = {}) {
+  const R = RNG('rul', o.key ?? 'r', B);
+  const L = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L, uy = (y2 - y1) / L, nx = -uy, ny = ux;
+  const frac = clamp(o.frac ?? 1), step = o.step ?? 16, tk = o.tick ?? 7, side = o.side ?? 1;
+  ctx.save(); ctx.strokeStyle = o.c || C.periD; ctx.lineWidth = o.w ?? 1.5; ctx.globalAlpha = o.al ?? 1; ctx.lineCap = 'round';
+  const jx = R.n(0.8), jy = R.n(0.8);
+  ctx.beginPath(); ctx.moveTo(x1 + jx, y1 + jy); ctx.lineTo(x1 + ux * L * frac + jx, y1 + uy * L * frac + jy);
+  const n = Math.floor(L * frac / step);
+  for (let i = 0; i <= n; i++) {
+    const k = i % 5 === 0 ? tk * 1.9 : tk, px = x1 + ux * i * step + jx, py = y1 + uy * i * step + jy;
+    ctx.moveTo(px, py); ctx.lineTo(px + nx * k * side, py + ny * k * side);
+  }
+  ctx.moveTo(x1 - nx * tk * 1.6, y1 - ny * tk * 1.6); ctx.lineTo(x1 + nx * tk * 2.2, y1 + ny * tk * 2.2);
+  if (frac >= 1) { ctx.moveTo(x2 - nx * tk * 1.6, y2 - ny * tk * 1.6); ctx.lineTo(x2 + nx * tk * 2.2, y2 + ny * tk * 2.2); }
+  ctx.stroke(); ctx.restore();
+}
+// glowing radial spark (dark world)
+function sparkBurst(cx, cy, r, o = {}) {
+  if (r <= 0.5) return;
+  const R = RNG('spk', o.key ?? 's', B), n = o.n ?? 18, rays = [];
+  for (let i = 0; i < n; i++) { const a = i / n * TAU + R.n(0.14); rays.push([a, r * R.r(0.28, 0.5), r * R.r(0.72, 1.15)]); }
+  const path = () => { ctx.beginPath(); for (const [a, r0, r1] of rays) { ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); } };
+  ctx.save(); ctx.lineCap = 'round';
+  path(); ctx.strokeStyle = o.glow || 'rgba(82,214,196,0.22)'; ctx.lineWidth = (o.w ?? 2.4) * 3.4; ctx.stroke();
+  path(); ctx.strokeStyle = o.c || '#8ff5e6'; ctx.lineWidth = o.w ?? 2.4; ctx.stroke();
+  if (o.core !== false) {
+    const cr = Math.max(2.5, r * (o.coreR ?? 0.15));
+    ctx.beginPath(); ctx.arc(cx, cy, cr * 2.2, 0, TAU); ctx.fillStyle = 'rgba(190,215,255,0.16)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = C.periD; ctx.stroke();
+  }
+  if (o.specks) { ctx.fillStyle = o.c || '#8ff5e6'; for (let i = 0; i < o.specks; i++) { const a = R.r(0, TAU), d = r * R.r(0.2, 1.4); ctx.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2, 2); } }
+  ctx.restore();
+}
+// radial tick burst (warm world impact)
+function burst(cx, cy, r0, r1, o = {}) {
+  const R = RNG('bur', o.key ?? 'b', B), n = o.n ?? 12;
+  ctx.save(); ctx.strokeStyle = o.c || C.ink; ctx.lineWidth = o.w ?? 3; ctx.lineCap = 'round'; ctx.globalAlpha = o.al ?? 1; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = i / n * TAU + R.n(0.15) + (o.rot ?? 0), a1 = r0 * R.r(0.85, 1.1), b1 = r1 * R.r(0.75, 1.15);
+    ctx.moveTo(cx + Math.cos(a) * a1, cy + Math.sin(a) * a1); ctx.lineTo(cx + Math.cos(a) * b1, cy + Math.sin(a) * b1);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function star4(x, y, s, c) {
+  ctx.save(); ctx.fillStyle = c; ctx.beginPath();
+  ctx.moveTo(x, y - s); ctx.quadraticCurveTo(x, y, x + s, y); ctx.quadraticCurveTo(x, y, x, y + s);
+  ctx.quadraticCurveTo(x, y, x - s, y); ctx.quadraticCurveTo(x, y, x, y - s); ctx.fill(); ctx.restore();
+}
+// rainbow contour strokes around a moving part
+function rainbow(P, o = {}) {
+  const bb = bbox(P), cx = o.cx ?? (bb.x0 + bb.x1) / 2, cy = o.cy ?? (bb.y0 + bb.y1) / 2, n = o.n ?? 3;
+  for (let i = 0; i < n; i++) {
+    const S = RNG('rb', o.key, i, B), sc = 1 + (o.spread ?? 0.07) * (i + 1) + S.n(0.02);
+    const Q = P.map(([x, y]) => [cx + (x - cx) * sc + S.n(o.drift ?? 3), cy + (y - cy) * sc + S.n(o.drift ?? 3)]);
+    ink(Q, { closed: o.closed ?? true, color: RAINBOW[(i + (o.off ?? 0)) % RAINBOW.length], w: o.w ?? 1.6, amt: o.amt ?? 3.5, key: o.key + 'rb' + i, alpha: o.al ?? 0.85 });
+  }
+}
+// hex cell grid inside current clip
+function hexGrid(bb, size, o = {}) {
+  const h = size * Math.sqrt(3), R = RNG('hex', o.key ?? 'h', B);
+  ctx.save(); ctx.strokeStyle = o.c || C.periS; ctx.lineWidth = o.w ?? 1.2; ctx.globalAlpha = o.al ?? 1; ctx.beginPath();
+  let row = 0;
+  for (let y = bb.y0 - h; y < bb.y1 + h; y += h * 0.5, row++) {
+    for (let x = bb.x0 - size * 3 + (row % 2) * size * 1.5; x < bb.x1 + size * 3; x += size * 3) {
+      const jx = R.n(0.6), jy = R.n(0.6);
+      for (let k = 0; k < 6; k++) {
+        const a = k / 6 * TAU, b = (k + 1) / 6 * TAU;
+        if (k === 0) ctx.moveTo(x + Math.cos(a) * size + jx, y + Math.sin(a) * size + jy);
+        ctx.lineTo(x + Math.cos(b) * size + jx, y + Math.sin(b) * size + jy);
+      }
+    }
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+// ---------------------------------------------------------------------
+//  iris, camera, text
+// ---------------------------------------------------------------------
+// ragged hatched rim; dir=+1 strokes reach outward, -1 inward
+function irisRim(cx, cy, r, dir, o = {}) {
+  const R = RNG('irisR', o.key ?? 'i', B), n = Math.min(1600, Math.floor(r * TAU / 2.0));
+  ctx.strokeStyle = o.c || '#0b0c17'; ctx.lineWidth = o.w ?? 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = R.r(0, TAU), L = R.r(3, 11) + (R.f() < 0.28 ? R.r(10, 34) : 0), sl = R.n(0.4);
+    const r0 = r - dir * R.r(2, 6), r1 = r + dir * L, ax = Math.cos(a), ay = Math.sin(a);
+    ctx.moveTo(cx + ax * r0, cy + ay * r0); ctx.lineTo(cx + ax * r1 - ay * L * sl, cy + ay * r1 + ax * L * sl);
+  }
+  ctx.stroke();
+}
+// iris into a black hole (screen space)
+function irisHole(cx, cy, r, o = {}) {
+  if (r <= 0.5) return;
+  ctx.save(); screen();
+  const col = o.c || '#0b0c17';
+  const P = wobble(ellipsePts(cx, cy, r, r, 0, 140), true, Math.min(4, 0.6 + r * 0.02), 'ih' + (o.key ?? ''), 9);
+  trace(P, true); ctx.fillStyle = col; ctx.fill();
+  irisRim(cx, cy, r, +1, { c: col, key: o.key });
+  if (o.inner) { ctx.save(); trace(P, true); ctx.clip(); o.inner(r); ctx.restore(); }
+  ctx.restore();
+}
+// world point (cx,cy) lands at screen centre
+function camera(cx, cy, zoom = 1, rot = 0, sx = 0, sy = 0) {
+  const c = Math.cos(rot) * zoom, s = Math.sin(rot) * zoom;
+  ctx.setTransform(c, s, -s, c, W / 2 + sx - (c * cx - s * cy), H / 2 + sy - (s * cx + c * cy));
+}
+function screen() { ctx.setTransform(1, 0, 0, 1, 0, 0); }
+function toScreen(x, y) { const p = ctx.getTransform().transformPoint(new DOMPoint(x, y)); return [p.x, p.y]; }
+function fillAll(color) { ctx.save(); screen(); ctx.fillStyle = color; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+
+// monospace text with per-glyph hand jitter
+function monoText(str, x, y, size, color, o = {}) {
+  ctx.save();
+  ctx.font = `${o.weight ?? 700} ${size}px ${MONO}`; ctx.fillStyle = color; ctx.textBaseline = 'alphabetic';
+  const cw = ctx.measureText('M').width, R = RNG('txt', o.key ?? str, B), jit = o.jit ?? 0.9;
+  const n = Math.min(o.count ?? str.length, str.length);
+  ctx.globalAlpha = o.al ?? 1;
+  for (let i = 0; i < n; i++) {
+    const ch = str[i]; if (ch === ' ') continue;
+    ctx.save(); ctx.translate(x + i * cw + R.n(jit), y + R.n(jit)); ctx.rotate(R.n(0.045)); ctx.fillText(ch, 0, 0); ctx.restore();
+  }
+  ctx.restore();
+  return cw;
+}
+function monoW(size) { ctx.save(); ctx.font = `700 ${size}px ${MONO}`; const w = ctx.measureText('M').width; ctx.restore(); return w; }
+
+// single-stroke hand lettering (x-height 0.5, ascender 1.0, baseline 0)
+const GLYPHS = {
+  ' ': { w: 0.26, s: [] },
+  c: { w: 0.5, s: [arcPts(0.26, -0.25, 0.25, -35 * DEG, -322 * DEG, 22)] },
+  o: { w: 0.52, s: [arcPts(0.26, -0.25, 0.25, -95 * DEG, -460 * DEG, 30)] },
+  a: { w: 0.54, s: [[...arcPts(0.25, -0.25, 0.235, -28 * DEG, -335 * DEG, 24)], [[0.49, -0.5], [0.49, -0.05], [0.55, 0.0]]] },
+  d: { w: 0.56, s: [[...arcPts(0.25, -0.25, 0.235, -28 * DEG, -335 * DEG, 24)], [[0.49, -1.0], [0.49, -0.05], [0.56, 0.0]]] },
+  l: { w: 0.24, s: [[[0.08, -1.0], [0.08, -0.1], [0.12, -0.01], [0.2, 0.0]]] },
+  u: { w: 0.54, s: [[[0.03, -0.5], [0.03, -0.22], ...arcPts(0.255, -0.22, 0.225, 180 * DEG, 0, 14), [0.48, -0.5]], [[0.48, -0.5], [0.48, -0.04], [0.54, 0.0]]] },
+  e: { w: 0.52, s: [[[0.03, -0.26], [0.5, -0.26], ...arcPts(0.265, -0.25, 0.245, -4 * DEG, -318 * DEG, 26)]] },
+};
+function handwrite(str, x, y, size, o = {}) {
+  const strokes = []; let pen = 0;
+  for (const ch of str) {
+    const g = GLYPHS[ch] || GLYPHS[' '];
+    for (const s of g.s) strokes.push(s.map(([u, v]) => [x + (pen + u) * size, y + v * size]));
+    pen += g.w + 0.1;
+  }
+  const lens = strokes.map(pathLen), total = lens.reduce((a, b) => a + b, 0);
+  let budget = clamp(o.frac ?? 1) * total;
+  for (let i = 0; i < strokes.length && budget > 0; i++) {
+    const f = Math.min(1, budget / lens[i]); budget -= lens[i];
+    if (o.glow) ink(strokes[i], { color: o.glow, w: (o.w ?? size * 0.06) * 3, amt: o.amt ?? 1.0, key: 'hw' + i + str, frac: f });
+    ink(strokes[i], { color: o.c, w: o.w ?? size * 0.06, amt: o.amt ?? 1.0, key: 'hw' + i + str, frac: f });
+  }
+  return pen * size;
+}
+
+// =====================================================================
+// ---- small props and helpers
+function drawPencil(tx, ty, ang, len, k = 1, key = 'pencil') {
+  ctx.save(); ctx.translate(tx, ty); ctx.rotate(ang); ctx.scale(k, k);
+  paint([[46, -16], [len, -16], [len, 16], [46, 16]], {
+    fill: C.yellow, key: key + 'b', w: 3,
+    tex: [{ k: 'hatch', a: 0.05, gap: 5, c: '#a8741d', al: 0.55, w: 1.1, dash: [20, 90], dens: (x, y) => (y > 5 ? 1 : 0.08) }, { k: 'pencil', c: '#fff1b8', al: 0.5, a: 0.05, len: 30, per: 120, dens: (x, y) => (y < -4 ? 1 : 0.1) }],
+  });
+  ink([[50, -5], [len, -5]], { w: 1.6, key: key + 'f1', alpha: 0.7 });
+  ink([[50, 6], [len, 6]], { w: 1.6, key: key + 'f2', alpha: 0.7 });
+  paint([[1, 0], [46, -15], [46, 15]], { fill: '#efcf9f', key: key + 'c', w: 2.6, tex: [{ k: 'hatch', a: 1.2, gap: 4, al: 0.35, dens: (x, y) => (y > 2 ? 1 : 0.1) }] });
+  paint([[0, 0], [15, -5], [15, 5]], { fill: '#3b3438', key: key + 't', w: 2 });
+  paint([[len, -17], [len + 26, -17], [len + 26, 17], [len, 17]], { fill: '#bcb7ab', key: key + 'fe', w: 2.6, tex: [{ k: 'hatch', a: Math.PI / 2, gap: 5, al: 0.5 }] });
+  paint(rrectPts(len + 24, -16, 34, 32, 10), { fill: '#e58f8c', key: key + 'e', w: 2.6, tex: [{ k: 'pencil', c: C.roseD, al: 0.5, per: 60 }] });
+  ctx.restore();
+}
+// smoothstep of x between a and b (NOT manim's `smooth` rate function — the math style calls that smoothM)
+const smooth = (a, b, x) => { const u = clamp((x - a) / (b - a)); return u * u * (3 - 2 * u); };
+const mod = (a, n) => ((a % n) + n) % n;
+function asterisk(x, y, r0, r1, n, rot, color, w) {
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let i = 0; i < n; i++) { const a = i / n * TAU + rot; ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); }
+  ctx.stroke(); ctx.restore();
+}
+
+// ---------------------------------------------------------------------
+//  time (set by the renderer): TT = absolute time on the motion step (on 2s unless STYLE.ones);
+//  E0 = the current era's start; DEFER = overlay queue (captions drawn after the camera); SPARK_AT = the hero's screen spot
+//  ev(t, d) = 0..1 progress of an event at t over d seconds; popS(t) = back-eased pop-in scale
+// ---------------------------------------------------------------------
+let TT = 0, E0 = 0, DEFER = null, SPARK_AT = null;
+const ev = (t, d = 0.25) => clamp((TT - t) / d);
+const popS = (t) => (TT < t ? 0 : EZ.back(clamp((TT - t) / 0.25)));
+
+// ---------------------------------------------------------------------
+//  springs: closed-form, so any frame can be drawn on its own (deterministic, no state)
+//  springEase(t, k, d)       0 -> 1 over time t >= 0 (stiffness k, damping d): accelerates, overshoots a hair, settles
+//  springMove(t0, a, b, p)   a value moving from a to b, starting at time t0 (p = a SPRING preset)
+//  springTrack(keys, p)      a value with many targets: keys = [[t, value], ...] sorted by t. One spring per change,
+//                            added up, so a target change mid-move stays continuous (cursors, widths, positions)
+// ---------------------------------------------------------------------
+const SPRING = {
+  snappy: { k: 320, d: 30 },    // UI: buttons, toggles, leading edges
+  smooth: { k: 170, d: 26 },    // cards, containers, the camera
+  heavy: { k: 90, d: 19 },      // big type, logos, large objects
+  playful: { k: 260, d: 14 },   // mascots, stickers: visible overshoot
+};
+function springEase(t, k = 170, d = 26) {
+  if (t <= 0) return 0;
+  const w0 = Math.sqrt(k), z = d / (2 * w0);
+  if (z < 1) { const wd = w0 * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)); }
+  return 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+}
+const springMove = (t0, a, b, p = SPRING.smooth) => a + (b - a) * springEase(TT - t0, p.k, p.d);
+function springTrack(keys, p = SPRING.smooth) {
+  let v = keys[0][1];
+  for (let i = 1; i < keys.length; i++) v += (keys[i][1] - keys[i - 1][1]) * springEase(TT - keys[i][0], p.k, p.d);
+  return v;
+}
+
+// ---------------------------------------------------------------------
+//  layout for several formats (9:16, 1:1, 16:9, 4:5 from one piece): place things by fractions of the frame,
+//  size them by UNIT (1 at 1080 on the short side). LX(0.5), LY(0.62), 120 * UNIT. PORTRAIT / WIDE pick layouts.
+// ---------------------------------------------------------------------
+const LX = (f) => f * W, LY = (f) => f * H, UNIT = Math.min(W, H) / 1080, PORTRAIT = H > W * 1.2, WIDE = W > H * 1.2;
+
+// ---------------------------------------------------------------------
+//  the user's own assets (screenshots, logos): files in <piece>/assets/ that tools/build.mjs embeds in the page.
+//  asset('logo.png') -> the Image (or null); drawAsset(name, x, y, w, h, { fit: 'contain'|'cover', r, alpha })
+//  Real product UI only: never redraw a product screen from imagination when a screenshot exists.
+// ---------------------------------------------------------------------
+const asset = (name) => (typeof ASSETS !== 'undefined' && ASSETS[name] && ASSETS[name].complete ? ASSETS[name] : null);
+function drawAsset(name, x, y, w, h, o = {}) {
+  const img = asset(name); if (!img) return false;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const s = (o.fit === 'cover' ? Math.max : Math.min)(w / iw, h / ih), dw = iw * s, dh = ih * s;
+  ctx.save(); ctx.globalAlpha *= o.alpha ?? 1;
+  if (o.r || o.fit === 'cover') { ctx.beginPath(); ctx.roundRect(x, y, w, h, o.r || 0); ctx.clip(); }
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  ctx.restore(); return true;
+}
+// =====================================================================
+//  styles/thedigitalstag/kit.js — calm, considered editorial on a dark navy stage.
+//  Built on kit/core.js (RNG, EZ, wobble, ink, paint, hatch, pencil, stipple,
+//  grain, monoText, monoW, handwrite, drawPencil, monoText, etc.).
+//  Needs from the piece head: HAND (a font stack), CX (caption centre x).
+//  All helpers are prefixed with `ds` to avoid colliding with core names.
+//  Nothing carries between frames; the renderer clears each era's layer.
+// =====================================================================
+
+const DSF = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+const DSM = '"JetBrains Mono", "Consolas", "Menlo", monospace';
+
+// the measured palette (kept as a const so pieces can read it; tokens are also hard-coded
+// in the helper functions for the rendering hot path).
+const DSB = {
+  bg:        '#0E1A28',
+  surface:   '#142A3E',
+  surface2:  '#1B3650',
+  line:      '#5A7FA0',
+  lineDark:  '#324975',
+  ink:       '#1C3E69',
+  paper:     '#EAEEF2',
+  type:      '#EAEEF2',
+  muted:     '#9FB0BF',
+  cyanHi:    '#0CA3FB',
+  cyanLo:    '#00EAEF',
+  cyan:      '#00A8C8',
+};
+
+// ---------------------------------------------------------------------
+//  STAGE: dark navy with sparse grain and a soft vignette. Always the first call in a scene.
+// ---------------------------------------------------------------------
+function dsBackdrop(c) {
+  fillAll(c || DSB.bg);
+  // soft vignette: a radial gradient from surface in the centre to bg at the edges
+  const g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.15, W / 2, H * 0.55, Math.max(W, H) * 0.8);
+  g.addColorStop(0, 'rgba(27, 54, 80, 0.55)');
+  g.addColorStop(1, 'rgba(14, 26, 40, 0)');
+  ctx.save();
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+// grain pass, called from STYLE.post. Sparse and low-alpha so the dark never reads as flat.
+function dsGrain(n = 1600, al = 0.08) {
+  const R = RNG('grain', B);
+  ctx.save();
+  ctx.fillStyle = `rgba(234, 238, 242, ${al})`;
+  for (let i = 0; i < n; i++) ctx.fillRect(R.r(0, W), R.r(0, H), R.r(0.6, 1.4), R.r(0.6, 1.4));
+  ctx.fillStyle = `rgba(10, 18, 28, ${al * 0.9})`;
+  for (let i = 0; i < Math.floor(n * 0.6); i++) ctx.fillRect(R.r(0, W), R.r(0, H), R.r(0.6, 1.4), R.r(0.6, 1.4));
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------
+//  SURFACES: a card, a panel, a thin isometric line slab (the visual proxy for a "block").
+// ---------------------------------------------------------------------
+const dsBox = (x, y, w, h) => resample([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], true, 30);
+
+function dsCard(x, y, w, h, key, o = {}) {
+  const fill = o.fill || DSB.surface;
+  const lc = o.line || DSB.line;
+  const lw = o.wline ?? 2.5;
+  paint(dsBox(x, y, w, h), {
+    fill, line: lc, w: lw, key: key + 'c',
+    tex: [{ k: 'pencil', c: DSB.surface2, al: 0.35, per: 80, a: -0.5 }],
+  });
+}
+function dsPanel(x, y, w, h, key, o = {}) { return dsCard(x, y, w, h, key, { ...o, fill: o.fill || DSB.surface }); }
+
+// a thin isometric line slab: constant hairline, one dark accent face, rounded top edges.
+// the reference's 3D blocks are heavy isometric renders; we draw a cleaner, line-only proxy
+// so pieces still read as "block diagram" without faking 3D.
+function dsSlab(cx, cy, w, h, key, o = {}) {
+  const top = o.top || DSB.surface;
+  const left = o.left || DSB.lineDark;
+  const right = o.right || DSB.ink;
+  const lw = o.wline ?? 2;
+  const depth = o.depth ?? Math.round(w * 0.18);
+  // top face (rounded rect outline)
+  const topP = rrectPts(cx - w / 2, cy - h / 2 - depth * 0.4, w, h, 8);
+  paint(topP, { fill: top, line: DSB.line, w: lw, key: key + 't', tex: [{ k: 'pencil', c: DSB.surface2, al: 0.4, per: 90 }] });
+  // left face
+  const leftP = [
+    [cx - w / 2, cy - h / 2 - depth * 0.4 + 8],
+    [cx - w / 2, cy + h / 2 - depth * 0.4],
+    [cx - w / 2 - depth, cy + h / 2 + depth * 0.6 - 2],
+    [cx - w / 2 - depth, cy - h / 2 + depth * 0.6 - 2],
+  ];
+  paint(leftP, { fill: left, line: DSB.line, w: lw, key: key + 'l' });
+  // right face
+  const rightP = [
+    [cx + w / 2 - 8, cy - h / 2 - depth * 0.4],
+    [cx + w / 2 - 8, cy + h / 2 - depth * 0.4 - 2],
+    [cx + w / 2 + depth - 8, cy + h / 2 + depth * 0.6 - 4],
+    [cx + w / 2 + depth - 8, cy - h / 2 + depth * 0.6 - 4],
+  ];
+  paint(rightP, { fill: right, line: DSB.line, w: lw, key: key + 'r' });
+}
+
+// an underline accent (cyan on Gero content) used to highlight a number or a CTA.
+function dsAccent(x, y, w, key, o = {}) {
+  const al = o.al ?? 0.85;
+  const grad = ctx.createLinearGradient(x, y, x + w, y);
+  grad.addColorStop(0, DSB.cyanHi);
+  grad.addColorStop(1, DSB.cyanLo);
+  ctx.save();
+  ctx.globalAlpha = al;
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, o.h ?? 4);
+  ctx.restore();
+}
+
+// a small cyan pill, used for the gerowallet.io CTA on the end card.
+function dsPill(str, x, y, size, o = {}) {
+  ctx.save();
+  // measure the text first, then size the pill with generous padding so the text always fits
+  ctx.font = `600 ${size}px ${DSF}`;
+  const tw = ctx.measureText(str).width;
+  const w = tw + size * 2.4, h = size * 1.9;
+  const cx = x, cy = y;
+  const grad = ctx.createLinearGradient(cx - w / 2, cy, cx + w / 2, cy);
+  grad.addColorStop(0, DSB.cyanHi);
+  grad.addColorStop(1, DSB.cyanLo);
+  ctx.translate(cx, cy);
+  paint(rrectPts(-w / 2, -h / 2, w, h, h / 2), { fill: grad, line: DSB.cyanLo, w: 1.5, key: 'pill' + str });
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = DSB.bg;
+  ctx.fillText(str, 0, 2);
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------
+//  THE HERO: a small stag-blue spot with two eyes, an idle bob, and a blink.
+//  Sets SPARK_AT for the anchor check. r is the radius in world coords.
+// ---------------------------------------------------------------------
+const DS_HERO_PTS_CACHE = new Map();
+function dsHero(x, y, r, o = {}) {
+  const key = o.key ?? 'hero';
+  const mood = o.mood || 'calm';
+  y += Math.sin(TT * TAU * 0.9 + key.length) * r * 0.04;     // idle bob on 2s
+  SPARK_AT = toScreen(x, y);
+  // body: a stag-blue disc, slightly textured
+  const P = ellipsePts(x, y, r, r * 0.95, 0, 56);
+  paint(P, {
+    fill: DSB.ink, line: DSB.line, w: Math.max(2.5, r * 0.08), key,
+    tex: [{ k: 'pencil', c: '#2A4F7A', al: 0.5, per: 60, dens: (px, py) => clamp(1 - (Math.hypot(px - x, py - y) / r) * 0.6) }],
+  });
+  // a thin stag-light highlight at the top-left (the source light direction)
+  const hl = arcPts(x, y, r * 0.86, Math.PI * 1.05, Math.PI * 1.55, 12);
+  ink(hl, { w: Math.max(1.5, r * 0.05), color: DSB.line, key: key + 'hl', amt: 1.0 });
+  // eyes: two paper-white dots, blink
+  const blink = (B + key.length * 7) % 41 < 2;
+  const eyeR = mood === 'wow' ? r * 0.14 : r * 0.1;
+  for (const s of [-1, 1]) {
+    const ex = x + s * r * 0.32, ey = y - r * 0.05;
+    if (blink) {
+      ink([[ex - r * 0.12, ey], [ex + r * 0.12, ey]], { w: r * 0.06, color: DSB.paper, key: key + 'bl' + s, amt: 0.3 });
+    } else {
+      ctx.fillStyle = DSB.paper;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, eyeR, eyeR * 1.3, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = DSB.bg;
+      ctx.beginPath();
+      ctx.ellipse(ex + s * r * 0.02, ey + r * 0.02, eyeR * 0.45, eyeR * 0.6, 0, 0, TAU);
+      ctx.fill();
+    }
+  }
+  return P;
+}
+const dsHeroOutline = (x, y, r) => ellipsePts(x, y, r, r * 0.95, 0, 96);
+
+// ---------------------------------------------------------------------
+//  WATERMARK: the stag-circle in the top-left corner. Drawn through DEFER so it
+//  sits over the camera. Half opacity, small, present throughout.
+//  We draw a stylised stag silhouette (a circle with two tiny antler marks) so
+//  it reads as the brand without needing the source PNG embedded in the canvas.
+// ---------------------------------------------------------------------
+function dsWatermark(o = {}) {
+  const f = () => {
+    const cx = 100, cy = 110, r = 50;
+    const a = o.al ?? 0.6;
+    ctx.save();
+    ctx.globalAlpha = a;
+    // antlers: two thin stag-light curves (visual rhyme with the Gero mark, distinctly ours)
+    const earWiggle = (B % 41) < 2 ? 2.2 : 0;
+    ink([[cx - r * 0.55, cy + r * 0.4], [cx - r * 0.85 + earWiggle, cy - r * 0.6], [cx - r * 0.55, cy - r * 1.1], [cx - r * 0.2, cy - r * 0.85]], { w: 3, color: DSB.line, key: 'wmLe', amt: 1.2 });
+    ink([[cx + r * 0.55, cy + r * 0.4], [cx + r * 0.85 - earWiggle, cy - r * 0.6], [cx + r * 0.55, cy - r * 1.1], [cx + r * 0.2, cy - r * 0.85]], { w: 3, color: DSB.line, key: 'wmRi', amt: 1.2 });
+    // body: a faint stag-blue disc with a thin outline, slightly off-set down
+    paint(ellipsePts(cx, cy + r * 0.5, r * 0.85, r * 0.7, 0, 40), {
+      fill: DSB.ink, line: DSB.line, w: 1.8, key: 'wm',
+      tex: [{ k: 'pencil', c: '#2A4F7A', al: 0.4, per: 90 }],
+    });
+    // two tiny paper-white eyes on the disc
+    ctx.fillStyle = DSB.paper;
+    ctx.beginPath();
+    ctx.ellipse(cx - r * 0.22, cy + r * 0.45, 3.5, 5, 0, 0, TAU);
+    ctx.ellipse(cx + r * 0.22, cy + r * 0.45, 3.5, 5, 0, 0, TAU);
+    ctx.fill();
+    // wordmark "thedigitalstag" — small, to the right
+    ctx.font = `500 24px ${DSF}`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.line;
+    ctx.fillText('thedigitalstag', cx + r + 18, cy + 8);
+    ctx.restore();
+  };
+  if (DEFER) DEFER.push(f); else f();
+}
+
+// ---------------------------------------------------------------------
+//  CAPTIONS: an Inter tag (top, small, cyan on Gero content) and a centered caption
+//  (off-white body). Drawn after the camera (DEFER) so they sit at screen size.
+// ---------------------------------------------------------------------
+function dsTag(str, o = {}) {
+  const f = () => {
+    const size = o.size ?? 32;
+    const x = o.x ?? 80, y = o.y ?? 220;
+    const c = o.color || DSB.cyanHi;
+    ctx.save();
+    ctx.font = `600 ${size}px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = c;
+    ctx.globalAlpha = popS(E0 + (o.delay ?? 0.15));
+    ctx.fillText(str.toUpperCase(), x, y);
+    ctx.restore();
+  };
+  if (DEFER) DEFER.push(f); else f();
+}
+function dsCaption(str, o = {}) {
+  const f = () => {
+    const size = o.size ?? 56;
+    const c = o.color || DSB.type;
+    const y = o.y ?? 1440;
+    ctx.save();
+    ctx.font = `500 ${size}px ${DSF}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = c;
+    ctx.globalAlpha = 1;
+    const w = ctx.measureText(str).width;
+    if (o.frac != null && o.frac < 1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(CX - w / 2 - 10, y - size * 1.2, w * clamp(o.frac) + 20, size * 1.6);
+      ctx.clip();
+      ctx.fillText(str, CX, y);
+      ctx.restore();
+    } else {
+      ctx.fillText(str, CX, y);
+    }
+    ctx.restore();
+  };
+  if (DEFER) DEFER.push(f); else f();
+}
+
+// =====================================================================
+//  STYLE — the renderer's hooks (kit/morph.js).
+// =====================================================================
+const STYLE = {
+  name: 'thedigitalstag',
+  paper: DSB.bg,                                                      // the sheet a morph happens on (dark, not paper)
+  backdrop(c) { dsBackdrop(c); },                                     // the frame filled, with grain + vignette
+  window(P, key, src) {                                               // the world seen through outline P: clean rectangular window
+    const Q = wobble(P, true, 1.6, key, 8);
+    ctx.save(); trace(Q, true); ctx.clip(); ctx.drawImage(src, 0, 0); ctx.restore();
+    ctx.save(); ink(Q, { closed: true, w: 3.0, color: DSB.line, key: key + 'rim', amt: 1.4 }); ctx.restore();
+  },
+  blob(P, c, key) {                                                   // the morphing shape: a stag-light slab
+    paint(wobble(P, true, 1.2, key, 8), { fill: c, key, line: DSB.line, w: 3, tex: [{ k: 'pencil', c: DSB.surface2, al: 0.35, per: 80 }] });
+  },
+  hero(x, y, r, o) { dsHero(x, y, r * 0.7, o); },                     // r = half the hero's size, in world coords
+  heroColor: DSB.ink,
+  heroPts: (x, y, r) => dsHeroOutline(x, y, r * 0.7),
+  post() { dsGrain(1600, 0.08); },                                    // sparse grain pass
+  ones: false,                                                        // motion on 2s
+};
+// =====================================================================
+//  SCENES — market-data-test. 4 beats, F4 mission, 2 eras joined by one shape morph.
+//  Era 1 (0-6s): the WANT + SETUP — a card with three token rows.
+//  Era 2 (6-12s): the PROOF + PAYOFF — order book, candle chart, Nexus callout, big stat, end card.
+// =====================================================================
+
+// -- a small token row: ticker, price, 24h change, sparkline.
+function dsTokenRow(x, y, w, h, ticker, price, change, sparkSeed, key) {
+  const R = RNG('spark', key);
+  // background: a thin surface card
+  paint(rrectPts(x, y, w, h, 8), {
+    fill: DSB.surface, line: DSB.lineDark, w: 1.5, key: key + 'b',
+    tex: [{ k: 'pencil', c: DSB.surface2, al: 0.3, per: 90 }],
+  });
+  // ticker on the left
+  ctx.save();
+  ctx.font = `700 36px ${DSM}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = DSB.type;
+  ctx.fillText(ticker, x + 22, y + h / 2);
+  // price in the middle
+  ctx.font = `500 32px ${DSM}`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = DSB.type;
+  ctx.fillText(price, x + w / 2 - 60, y + h / 2);
+  // change % on the right
+  ctx.font = `500 28px ${DSM}`;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = change.startsWith('+') ? DSB.cyan : DSB.muted;
+  ctx.fillText(change, x + w - 22, y + h / 2);
+  // small sparkline in the gap between price and change
+  const sx = x + w / 2 + 10, sy = y + h / 2, sw = 70, sh = h * 0.5;
+  const pts = [];
+  for (let i = 0; i < 14; i++) {
+    const v = 0.5 + R.n(0.32) + (change.startsWith('+') ? i * 0.012 : -i * 0.008);
+    pts.push([sx + (i / 13) * sw, sy + (0.5 - clamp(v)) * sh]);
+  }
+  // a faint area under the line (stippled)
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], sy + sh * 0.5);
+  for (const p of pts) ctx.lineTo(p[0], p[1]);
+  ctx.lineTo(pts[pts.length - 1][0], sy + sh * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = change.startsWith('+') ? 'rgba(12, 163, 251, 0.18)' : 'rgba(159, 176, 191, 0.12)';
+  ctx.fill();
+  ctx.restore();
+  // the line itself
+  ink(pts, { w: 2, color: change.startsWith('+') ? DSB.cyan : DSB.line, key: key + 's', amt: 0.8 });
+  ctx.restore();
+}
+
+// -- a small candle: body + wicks. bullish = cyan, bearish = muted.
+function dsCandle(cx, cyTop, bodyH, wickH, bullish, key) {
+  const bodyTop = cyTop - bodyH;
+  const bodyBot = cyTop;
+  // wick
+  ink([[cx, cyTop - wickH], [cx, bodyBot + wickH * 0.2]], { w: 1.5, color: bullish ? DSB.cyan : DSB.muted, key: key + 'w', amt: 0.3 });
+  // body
+  paint(rrectPts(cx - 8, bodyTop, 16, bodyH, 2), {
+    fill: bullish ? DSB.cyan : DSB.surface2, line: bullish ? DSB.cyan : DSB.line, w: 1.5, key,
+  });
+}
+
+// -- a small order book row: price (left), size (right), side-coloured.
+function dsBookRow(x, y, w, h, price, size, side, key) {
+  paint(rrectPts(x, y, w, h, 4), {
+    fill: DSB.surface, line: DSB.lineDark, w: 1, key,
+    tex: [{ k: 'pencil', c: DSB.surface2, al: 0.25, per: 120 }],
+  });
+  ctx.save();
+  ctx.font = `500 24px ${DSM}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = side === 'bid' ? DSB.cyan : DSB.type;
+  ctx.fillText(price, x + 16, y + h / 2);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = DSB.muted;
+  ctx.fillText(size, x + w - 16, y + h / 2);
+  ctx.restore();
+}
+
+// =====================================================================
+//  ERA 1 (0-6s) — the WANT + SETUP
+// =====================================================================
+function sceneList() {
+  dsBackdrop();
+  // tag pops in
+  dsTag('MARKET DATA', { color: DSB.cyanHi, y: 200, size: 36 });
+  // display title
+  const titleA = 'Every token.';
+  const titleB = 'Every venue.';
+  const showB = clamp((TT - 0.4) / 0.35);
+  ctx.save();
+  ctx.font = `700 96px ${DSF}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = DSB.type;
+  ctx.fillText(titleA, 80, 380);
+  if (showB > 0) {
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText(titleB, 80, 380 + 100);
+  }
+  ctx.restore();
+  // the card
+  const card = { x: 80, y: 720, w: 920, h: 700 };
+  const cardPop = popS(TIMELINE.cues.card);
+  if (cardPop > 0) {
+    ctx.save();
+    ctx.translate(card.x + card.w / 2, card.y + card.h / 2);
+    ctx.scale(cardPop, cardPop);
+    ctx.translate(-(card.x + card.w / 2), -(card.y + card.h / 2));
+    dsCard(card.x, card.y, card.w, card.h, 'card');
+    // three token rows inside
+    const rowH = 110, rowGap = 50;
+    const rowX = card.x + 50, rowW = card.w - 100;
+    const rows = [
+      { ticker: 'ADA',  price: '$0.2028', change: '-4.2%', seed: 'a' },
+      { ticker: 'GERO', price: '$0.0059', change: '+0.0%', seed: 'g' },
+      { ticker: 'NIGHT',price: '$0.0204', change: '+3.2%', seed: 'n' },
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const y = card.y + 80 + i * (rowH + rowGap);
+      const rowPop = popS(TIMELINE.cues.rows + i * 0.18);
+      if (rowPop > 0) {
+        ctx.save();
+        ctx.translate(rowX + rowW / 2, y + rowH / 2);
+        ctx.scale(rowPop, rowPop);
+        ctx.translate(-(rowX + rowW / 2), -(y + rowH / 2));
+        dsTokenRow(rowX, y, rowW, rowH, r.ticker, r.price, r.change, r.seed, r.ticker);
+        ctx.restore();
+        // the selected (middle) row gets a cyan accent bar on the left
+        if (i === 1) {
+          const a = clamp((TT - 2.6) * 4);
+          ctx.save();
+          ctx.globalAlpha = a;
+          paint(rrectPts(rowX - 8, y + 8, 6, rowH - 16, 3), { fill: DSB.cyan, key: 'sel' + r.ticker });
+          ctx.restore();
+        }
+      }
+    }
+    // the card's right edge (the bridge object) — visible from t=2.4 onward
+    const glow = popS(TIMELINE.cues.glow);
+    if (glow > 0) {
+      ctx.save();
+      ctx.globalAlpha = glow;
+      paint(rrectPts(880, 680, 12, 340, 6), { fill: DSB.cyan, key: 'brR' });
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  // hero at the bottom
+  dsHero(540, 1300, 70, { key: 'h1' });
+  // caption
+  dsCaption('Live from the chain.', { y: 1500 });
+  // watermark
+  dsWatermark();
+}
+
+// =====================================================================
+//  ERA 2 (6-12s) — the PROOF + PAYOFF
+// =====================================================================
+function sceneCharts() {
+  dsBackdrop();
+  // tag
+  dsTag('POWERED BY NEXUS', { color: DSB.cyanHi, y: 200, size: 32 });
+  // small display title
+  ctx.save();
+  ctx.font = `700 80px ${DSF}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = DSB.type;
+  ctx.fillText('Order books.', 80, 360);
+  ctx.fillText('Real trades.', 80, 360 + 84);
+  ctx.restore();
+  // left card: order book
+  const bookCard = { x: 80, y: 560, w: 460, h: 760 };
+  const bookPop = popS(TIMELINE.cues.book);
+  if (bookPop > 0) {
+    ctx.save();
+    ctx.translate(bookCard.x + bookCard.w / 2, bookCard.y + bookCard.h / 2);
+    ctx.scale(bookPop, bookPop);
+    ctx.translate(-(bookCard.x + bookCard.w / 2), -(bookCard.y + bookCard.h / 2));
+    dsCard(bookCard.x, bookCard.y, bookCard.w, bookCard.h, 'book');
+    // the bridge's destination — the left edge of this card
+    paint(rrectPts(220, 680, 12, 340, 6), { fill: DSB.cyan, key: 'brL' });
+    // book header
+    ctx.save();
+    ctx.font = `500 22px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('ORDER BOOK', bookCard.x + 24, bookCard.y + 24);
+    ctx.textAlign = 'right';
+    ctx.fillText('ADA / USD', bookCard.x + bookCard.w - 24, bookCard.y + 24);
+    ctx.restore();
+    // asks (top, descending price)
+    const asks = [
+      ['0.2031', '4,210.50'],
+      ['0.2029', '1,820.00'],
+      ['0.2028', '12,640.00'],
+      ['0.2027', '2,340.00'],
+      ['0.2026', '5,180.00'],
+    ];
+    const bids = [
+      ['0.2025', '8,210.00'],
+      ['0.2024', '3,640.00'],
+      ['0.2023', '9,120.00'],
+      ['0.2021', '1,560.00'],
+      ['0.2020', '2,800.00'],
+    ];
+    const rowH = 52, rowGap = 4;
+    const startY = bookCard.y + 80;
+    for (let i = 0; i < asks.length; i++) {
+      const y = startY + i * (rowH + rowGap);
+      const pop = clamp((TT - (TIMELINE.cues.book + 0.15 + i * 0.05)) * 4);
+      if (pop > 0) {
+        ctx.save();
+        ctx.globalAlpha = pop;
+        dsBookRow(bookCard.x + 24, y, bookCard.w - 48, rowH, asks[i][0], asks[i][1], 'ask', 'ask' + i);
+        ctx.restore();
+      }
+    }
+    // spread
+    const spreadY = startY + 5 * (rowH + rowGap) + 12;
+    ctx.save();
+    ctx.font = `600 24px ${DSM}`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText('SPREAD  0.0003', bookCard.x + bookCard.w / 2, spreadY);
+    ctx.restore();
+    for (let i = 0; i < bids.length; i++) {
+      const y = spreadY + 30 + i * (rowH + rowGap);
+      const pop = clamp((TT - (TIMELINE.cues.book + 0.45 + i * 0.05)) * 4);
+      if (pop > 0) {
+        ctx.save();
+        ctx.globalAlpha = pop;
+        dsBookRow(bookCard.x + 24, y, bookCard.w - 48, rowH, bids[i][0], bids[i][1], 'bid', 'bid' + i);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  // right card: candle chart
+  const chartCard = { x: 560, y: 560, w: 440, h: 360 };
+  const chartPop = popS(TIMELINE.cues.chart);
+  if (chartPop > 0) {
+    ctx.save();
+    ctx.translate(chartCard.x + chartCard.w / 2, chartCard.y + chartCard.h / 2);
+    ctx.scale(chartPop, chartPop);
+    ctx.translate(-(chartCard.x + chartCard.w / 2), -(chartCard.y + chartCard.h / 2));
+    dsCard(chartCard.x, chartCard.y, chartCard.w, chartCard.h, 'chart');
+    // header
+    ctx.save();
+    ctx.font = `500 22px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('CANDLES', chartCard.x + 24, chartCard.y + 24);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = DSB.type;
+    ctx.fillText('ADA / USD · 1H', chartCard.x + chartCard.w - 24, chartCard.y + 24);
+    ctx.restore();
+    // candles
+    const chartLeft = chartCard.x + 30;
+    const chartRight = chartCard.x + chartCard.w - 30;
+    const chartTop = chartCard.y + 70;
+    const chartBottom = chartCard.y + chartCard.h - 30;
+    const cw = (chartRight - chartLeft) / 14;
+    const R = RNG('candles');
+    for (let i = 0; i < 14; i++) {
+      const cx = chartLeft + i * cw + cw / 2;
+      const center = (chartTop + chartBottom) / 2;
+      const bodyH = 30 + R.r(0, 50);
+      const wickH = 10 + R.r(0, 18);
+      const bullish = i > 4 && i < 11;
+      const pop = clamp((TT - (TIMELINE.cues.chart + 0.2 + i * 0.04)) * 5);
+      if (pop > 0) {
+        ctx.save();
+        ctx.globalAlpha = pop;
+        dsCandle(cx, center + (bullish ? -bodyH * 0.4 : bodyH * 0.4), bodyH, wickH, bullish, 'c' + i);
+        ctx.restore();
+      }
+    }
+    // axis line at the bottom
+    ink([[chartLeft, chartBottom + 4], [chartRight, chartBottom + 4]], { w: 1, color: DSB.lineDark, key: 'axis' });
+    ctx.restore();
+  }
+  // stats card (smaller, stacked: big "11" on the left, labels on the right)
+  const statsCard = { x: 560, y: 940, w: 440, h: 380 };
+  const statPop = popS(TIMELINE.cues.stat);
+  if (statPop > 0) {
+    ctx.save();
+    ctx.translate(statsCard.x + statsCard.w / 2, statsCard.y + statsCard.h / 2);
+    ctx.scale(statPop, statPop);
+    ctx.translate(-(statsCard.x + statsCard.w / 2), -(statsCard.y + statsCard.h / 2));
+    dsCard(statsCard.x, statsCard.y, statsCard.w, statsCard.h, 'stats');
+    // big "11" on the left
+    ctx.save();
+    ctx.font = `700 160px ${DSF}`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText('11', statsCard.x + 30, statsCard.y + statsCard.h / 2);
+    // a thin vertical divider
+    paint(rrectPts(statsCard.x + 200, statsCard.y + 60, 2, statsCard.h - 120, 1), { fill: DSB.lineDark, key: 'sdiv' });
+    // three labels on the right, stacked
+    ctx.font = `500 26px ${DSF}`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.type;
+    ctx.fillText('DEX venues indexed', statsCard.x + 230, statsCard.y + 100);
+    ctx.font = `500 22px ${DSF}`;
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('real trades', statsCard.x + 230, statsCard.y + 150);
+    ctx.fillText('live, in your wallet', statsCard.x + 230, statsCard.y + 190);
+    // a cyan accent under the labels
+    const a = clamp((TT - 10.6) * 3);
+    if (a > 0) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      paint(rrectPts(statsCard.x + 230, statsCard.y + 230, 120, 3, 1), { fill: DSB.cyan, key: 'sund' });
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.restore();
+  }
+  // hero at y=1380 (above the safe area edge at y=1500)
+  dsHero(160, 1380, 45, { key: 'h2', mood: 'wow' });
+  // the gerowallet.io pill just above the safe area, centered-right
+  const pillPop = popS(TIMELINE.cues.pill);
+  if (pillPop > 0) {
+    ctx.save();
+    ctx.globalAlpha = pillPop;
+    dsPill('gerowallet.io', 780, 1380, 24);
+    ctx.restore();
+  }
+  // watermark
+  dsWatermark();
+}
+// =====================================================================
+//  ERAS, CAMERAS, BRIDGES — market-data-test (read by kit/morph.js)
+// =====================================================================
+const ERA_BG = ['#0E1A28', '#0E1A28'];     // both eras: same dark stage
+function pieceCam(era, t) {
+  if (era === 0) return push(t, 0.3, 5.7, { z: 1.04, p: [540, 1100], to: [540, 1080] }, 5.7, 5.9);
+  if (era === 1) return push(t, 6.3, 11.7, { z: 1.04, p: [540, 1100], to: [540, 1080] }, 11.7, 11.9);
+  return null;
+}
+// bridge: the cyan right-edge of the token card -> the left edge of the order book.
+// Both are tall thin vertical strips, so the morph is clean.
+const BRIDGES = [
+  { tc: 6.0, A: () => ({ P: [[880, 680], [898, 680], [898, 1020], [880, 1020]], c: '#0CA3FB' }),
+           B: () => ({ P: [[220, 680], [238, 680], [238, 1020], [220, 1020]], c: '#0CA3FB' }) },
+];
+
+// =====================================================================
+//  kit/morph.js — the renderer for pieces built from ERAS (scenes) joined by SHAPE MORPHS.
+//
+//  At each bridge time tc:
+//    shrink [tc-d, tc-m]      the old era is seen through a window shaped like the bridge object (STYLE.window),
+//                             shrinking onto the object while the backdrop fades to blank paper
+//    morph  [tc-m, tc+m]      on blank paper, the object's outline blends into its counterpart's
+//                             (both resampled by angle around their centroids; colour lerped). Hero-to-hero
+//                             bridges draw the hero itself with blended position, size and ray count.
+//    grow   [tc+m, tc+d]      the new era opens out of a window shaped like the counterpart
+//    d = the bridge's half-length (default 0.6s, so a bridge costs 1.2s), m = the morph's half (default 0.2s, or d/3 when d is set).
+//    Short pieces: { tc, d: 0.4 } (0.8s) or fewer bridges — see craft.md -> Transitions.
+//  Era boundaries WITHOUT a bridge are hard cuts (keep at most one: the slam).
+//
+//  The piece defines (in its head / src):
+//    ERA_LIST = [[t0, t1, () => drawScene()], ...]      scenes draw in world coords, call yearTag()/capStrip()
+//    ERA_BG   = ['#hex', ...]                          each era's dominant colour (for the fade to paper)
+//    BRIDGES  = [{ tc, A: () => shape, B: () => shape, d?, m? }]   shape = { P: points, c: '#hex' } or SP(x, y, r, rays)
+//    function pieceCam(era, t) { return null | CAM }   optional; use push() / bump() below
+//  Shapes are in each era's world coords; the bridge object must be in frame at tc (pull push-ins back first).
+//  The look comes from the style kit's STYLE hooks (paper, backdrop, window, blob, hero, post, ones):
+//  this file draws nothing itself, so the same piece structure works in any style.
+// =====================================================================
+// ---- cameras: CAM = { z, tx, ty }; camOf({ z, p, to }) puts world point p on screen point to
+const CAM0 = { z: 1, tx: 0, ty: 0 };
+const camOf = (c) => ({ z: c.z, tx: c.to[0] - c.z * c.p[0], ty: c.to[1] - c.z * c.p[1] });
+const camMix = (a, b, u) => ({ z: lerp(a.z, b.z, u), tx: lerp(a.tx, b.tx, u), ty: lerp(a.ty, b.ty, u) });
+// an eased push-in over [a, b] to cam, optionally pulled back over [oa, ob]
+function push(t, a, b, cam, oa, ob) { let u = EZ.io(seg(t, a, b)); if (oa != null) u *= 1 - EZ.io(seg(t, oa, ob)); return u > 0 ? camMix(CAM0, camOf(cam), u) : null; }
+// a zoom bump on every beat from t0, centred on point p (the hero keeps its screen spot)
+function bump(t, t0, p, amt = 0.3, every = 0.5) { return camOf({ z: 1 + amt * Math.exp(-mod(t - t0, every) * 7), p, to: p }); }
+function camAt(era, t) { return (typeof pieceCam === 'function' && pieceCam(era, t)) || CAM0; }
+const camPts = (P, c) => P.map(([x, y]) => [c.z * x + c.tx, c.z * y + c.ty]);
+// ---- bridge shapes
+function starPts(x, y, r, n, r0 = -Math.PI / 2, m = 96) {
+  const P = []; for (let i = 0; i < m; i++) { const a = i / m * TAU, k = 0.42 + 0.58 * (0.5 + 0.5 * Math.cos(n * (a - r0))) ** 3; P.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k]); }
+  return P;
+}
+const SP = (x, y, r, n) => ({ spark: [x, y, r, n] });
+const shapeOf = (s) => (s.spark ? { P: (STYLE.heroPts || starPts)(...s.spark), c: STYLE.heroColor, spark: s.spark } : s);
+function byAngle(P, m = 96) {   // resample a closed outline to m points by angle around its centroid
+  const c = P.reduce((a, p) => [a[0] + p[0] / P.length, a[1] + p[1] / P.length], [0, 0]), Q = resample(P, true, 4), out = [];
+  for (let i = 0; i < m; i++) {
+    const a = -Math.PI + i / m * TAU; let best = null, bd = 1e9;
+    for (const q of Q) { let d = Math.atan2(q[1] - c[1], q[0] - c[0]) - a; d = Math.abs(Math.atan2(Math.sin(d), Math.cos(d))); const r = Math.hypot(q[0] - c[0], q[1] - c[1]); if (d < bd - 1e-4 || (Math.abs(d - bd) < 1e-4 && r > best[2])) { bd = d; best = [q[0], q[1], r]; } }
+    out.push([best[0], best[1]]);
+  }
+  return { P: out, c };
+}
+const mixHex = (a, b, u) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const x = p(a), y = p(b); return `rgb(${x.map((v, i) => Math.round(lerp(v, y[i], u))).join(',')})`; };
+function maskK(P) {   // how far the window must scale about its centroid to cover the frame
+  const c = P.reduce((a, p) => [a[0] + p[0] / P.length, a[1] + p[1] / P.length], [0, 0]);
+  const rmin = Math.max(8, Math.min(...byAngle(P, 48).P.map((p) => Math.hypot(p[0] - c[0], p[1] - c[1]))));
+  const far = Math.max(...[[0, 0], [W, 0], [0, H], [W, H]].map((q) => Math.hypot(q[0] - c[0], q[1] - c[1])));
+  return { c, kmax: far / rmin * 1.1 };
+}
+const scaled = (P, c, k) => P.map(([x, y]) => [c[0] + (x - c[0]) * k, c[1] + (y - c[1]) * k]);
+// ---- layers and windows
+const LAYER = [];
+function layer(i) { if (!LAYER[i]) { const c = document.createElement('canvas'); c.width = W; c.height = H; LAYER[i] = c; } return LAYER[i]; }
+function renderEra(e, target) {   // draws era e into target; returns its overlay queue (year tag, caption)
+  const saved = ctx; ctx = target.getContext('2d');
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.setLineDash([]);
+  ctx.fillStyle = STYLE.paper; ctx.fillRect(0, 0, W, H);   // a clean sheet every frame: nothing carries over between frames
+  const cam = camAt(e, TT); ctx.setTransform(cam.z, 0, 0, cam.z, cam.tx, cam.ty);
+  DEFER = []; ERA_LIST[e][2](); const q = DEFER; DEFER = null;
+  ctx.restore(); ctx = saved;
+  return q;
+}
+function flush(q, e) { const keep = E0; E0 = ERA_LIST[e][0]; ctx.setTransform(1, 0, 0, 1, 0, 0); q.forEach((f) => f()); E0 = keep; }
+function shotAtFrame(fr) {
+  for (const s of TIMELINE.shots) if (fr >= Math.round(s.t0 * FPS) && fr < Math.round(s.t1 * FPS)) return s;
+  return TIMELINE.shots[TIMELINE.shots.length - 1];
+}
+const eraAt = (t) => ERA_LIST.findIndex(([a, b]) => t >= a - 1e-6 && t < b - 1e-6);
+// renderFrame(t, canvas, sub): sub = true draws the exact time t between frames (motion blur sub-frames, styles on 1s)
+function renderFrame(t, canvas, sub) {
+  const cv = canvas || document.getElementById('c');
+  ctx = cv.getContext('2d');
+  F = ((Math.floor(sub ? t * FPS + 1e-6 : Math.round(t * FPS)) % NFRAMES) + NFRAMES) % NFRAMES;
+  B = Math.floor(F / 2);
+  TT = (STYLE.ones ? (sub ? F + (t * FPS - Math.floor(t * FPS + 1e-6)) : F) : B * 2) / FPS;
+  // the era is picked by the real frame, so a cut on an odd frame (a 16th at 24fps) lands on that frame;
+  // on its first frame the new era is drawn at its own start time (motion stays on 2s inside it)
+  const s = shotAtFrame(F), e = Math.max(0, eraAt(F / FPS));
+  E0 = ERA_LIST[e][0];
+  if (TT < E0 - 1e-6) TT = E0;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.setLineDash([]); ctx.filter = 'none';
+  SPARK_AT = null;
+  const bd = (r) => r.d ?? 0.6, bm = (r) => r.m ?? (r.d != null ? r.d / 3 : 0.2);
+  const tr = BRIDGES.find((r) => TT >= r.tc - bd(r) - 1e-6 && TT < r.tc + bd(r) - 1e-6);
+  if (!tr) {
+    const q = renderEra(e, layer(0)); ctx.drawImage(layer(0), 0, 0); flush(q, e);
+  } else {
+    const ea = eraAt(tr.tc - 0.01), eb = eraAt(tr.tc + 0.01);
+    const sa = shapeOf(tr.A()), sb = shapeOf(tr.B());
+    const PA = camPts(sa.P, camAt(ea, TT)), PB = camPts(sb.P, camAt(eb, TT));
+    const D = bd(tr), M = bm(tr);
+    if (TT < tr.tc - M) {
+      const u = EZ.i2(seg(TT, tr.tc - D, tr.tc - M)), { c, kmax } = maskK(PA), k = Math.exp(lerp(Math.log(kmax), 0, u));
+      STYLE.backdrop(mixHex(ERA_BG[ea], STYLE.paper, 0.5 + u * 0.5), { eraA: ea, eraB: eb, u, phase: 'shrink' });
+      const q = renderEra(ea, layer(0));
+      STYLE.window(scaled(PA, c, k), 'mA' + tr.tc, layer(0), { c: sa.c, u, phase: 'shrink', eraA: ea, eraB: eb });
+      flush(q, ea);
+    } else if (TT < tr.tc + M) {
+      const u = EZ.io(seg(TT, tr.tc - M, tr.tc + M));
+      STYLE.backdrop(STYLE.paper, { eraA: ea, eraB: eb, u, phase: 'morph' });
+      if (sa.spark && sb.spark) {
+        const ca = camAt(ea, TT), cb = camAt(eb, TT), [ax, ay] = camPts([sa.spark.slice(0, 2)], ca)[0], [bx, by] = camPts([sb.spark.slice(0, 2)], cb)[0];
+        STYLE.hero(lerp(ax, bx, u), lerp(ay, by, u), lerp(sa.spark[2] * ca.z, sb.spark[2] * cb.z, u), { rays: Math.round(lerp(sa.spark[3], sb.spark[3], u)), mood: 'wow', key: 'morphspark' });
+      } else {
+        const A2 = byAngle(PA), B2 = byAngle(PB), M = A2.P.map((p, i) => [lerp(p[0], B2.P[i][0], u), lerp(p[1], B2.P[i][1], u)]);
+        STYLE.blob(M, mixHex(sa.c, sb.c, u), 'morph' + tr.tc, u, { eraA: ea, eraB: eb, phase: 'morph' });
+        if (sb.spark && u > 0.6) STYLE.hero(...camPts([sb.spark.slice(0, 2)], camAt(eb, TT))[0], sb.spark[2] * clamp((u - 0.6) / 0.4), { rays: sb.spark[3], mood: 'wow', key: 'morphspark2' });
+      }
+    } else {
+      const u = EZ.o2(seg(TT, tr.tc + M, tr.tc + D)), { c, kmax } = maskK(PB), k = Math.exp(lerp(0, Math.log(kmax), u));
+      STYLE.backdrop(mixHex(STYLE.paper, ERA_BG[eb], u * 0.5), { eraA: ea, eraB: eb, u, phase: 'grow' });
+      const q = renderEra(eb, layer(0));
+      STYLE.window(scaled(PB, c, k), 'mB' + tr.tc, layer(0), { c: sb.c, u, phase: 'grow', eraA: ea, eraB: eb });
+      flush(q, eb);
+    }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (STYLE.post) STYLE.post();
+  ctx.restore();
+  return s.id;
+}
+window.renderFrame = renderFrame;
+window.anchorAt = () => (SPARK_AT ? { x: SPARK_AT[0], y: SPARK_AT[1] } : null);
+
+// =====================================================================
+//  kit/board.js — the storyboard: every beat in TIMELINE.board drawn as a 9:16 key frame with its notes.
+//  The panels ARE the piece: each one is renderFrame(t) at the beat's key time, so an approved board
+//  carries straight into the video.  TIMELINE.board = [{ t, title, sound, next }]
+//  Render: node tools/storyboard.mjs <piece dir> [out.png] [panel numbers...]
+// =====================================================================
+function drawPanel(k) { renderFrame(TIMELINE.board[k].t, ctx.canvas); }
+function renderBoard() {
+  const BD = TIMELINE.board || [], COLS = 5, PW = 360, PH = Math.round(PW * H / W), GAP = 30, NOTE = 130, HEAD = 150;
+  const rows = Math.ceil(BD.length / COLS), bc = document.createElement('canvas');
+  bc.width = GAP + COLS * (PW + GAP); bc.height = HEAD + rows * (PH + NOTE + GAP);
+  const g = bc.getContext('2d'), SANS = '"Segoe UI", Arial, sans-serif';
+  g.fillStyle = '#2a211b'; g.fillRect(0, 0, bc.width, bc.height);
+  g.fillStyle = '#efe5cf'; g.font = `400 60px ${HAND}`; g.fillText(`${document.title}: storyboard`, GAP, 80);
+  g.font = `600 22px ${SANS}`; g.fillStyle = '#d9c9a8';
+  g.fillText(`${TIMELINE.duration}s · ${W}×${H} · ${TIMELINE.bpm} BPM · ${BD.length} beats. Thumbs up or down by panel number.`, GAP, 122);
+  const wrap = (str, x, y, maxW, lh) => { let line = ''; for (const w of str.split(' ')) { const t = line ? line + ' ' + w : w; if (g.measureText(t).width > maxW && line) { g.fillText(line, x, y); y += lh; line = w; } else line = t; } if (line) g.fillText(line, x, y); return y + lh; };
+  const pc = document.createElement('canvas'); pc.width = W; pc.height = H;
+  BD.forEach((b, k) => {
+    renderFrame(b.t, pc);
+    const x = GAP + (k % COLS) * (PW + GAP), y = HEAD + Math.floor(k / COLS) * (PH + NOTE + GAP);
+    g.drawImage(pc, x, y, PW, PH);
+    g.fillStyle = '#f0b27c'; g.font = `700 26px ${SANS}`; g.fillText(`${k + 1}`, x, y + PH + 32);
+    g.fillStyle = '#efe5cf'; g.font = `600 20px ${SANS}`;
+    let ttl = `${b.t.toFixed(1)}s · ${b.title || ''}`; while (ttl.length > 4 && g.measureText(ttl).width > PW - 44) ttl = ttl.slice(0, -2) + '…';   // fits the panel
+    g.fillText(ttl, x + 40, y + PH + 30);
+    g.font = `400 18px ${SANS}`; g.fillStyle = '#cdbd9c';
+    const yy = b.sound ? wrap('sound: ' + b.sound, x, y + PH + 58, PW, 22) : y + PH + 58;
+    if (b.next) { g.fillStyle = '#a8977a'; wrap('→ ' + b.next, x, yy + 2, PW, 22); }
+  });
+  return bc;
+}
+window.renderBoard = renderBoard; window.drawPanel = drawPanel;
+// =====================================================================
+//  kit/score-head.js — live preview (click to hear), noise/impulse/WAV helpers, and the synth.
+//  buildScore() opens here; the piece's score body follows (src/score.js), then kit/score-tail.js closes it.
+//  Helpers inside buildScore: pluck, noiseHit, sub, sweep, riser, chime, bass, blip, pad, drone, out, osc, env.
+//  Set `to = 'm'` (music bus) or `to = 's'` (sfx bus) before calling them. Notes: nz('D4').
+// =====================================================================
+// live preview: rAF on the 24fps grid; click to hear the score (?t=1.5 freezes a frame)
+const QS = new URLSearchParams(location.search);
+const LIVE = { audio: null, t0: 0, start: performance.now() };
+if (!QS.has('export')) {
+  const cv = document.getElementById('c');
+  if (QS.has('t')) renderFrame(parseFloat(QS.get('t')));
+  else {
+    const tick = () => {
+      const sec = LIVE.audio ? LIVE.audio.currentTime - LIVE.t0 : (performance.now() - LIVE.start) / 1000;
+      const t = ((sec % LOOP_T) + LOOP_T) % LOOP_T;
+      renderFrame(Math.floor(t * FPS) / FPS);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  cv.addEventListener('click', async () => {
+    if (LIVE.audio || typeof buildScore !== 'function') return;
+    const ac = new AudioContext(), score = await buildScore(ac.sampleRate);
+    const buf = ac.createBuffer(2, score.left.length, score.sampleRate);
+    buf.copyToChannel(score.left, 0); buf.copyToChannel(score.right, 1);
+    const src = ac.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(ac.destination);
+    LIVE.t0 = ac.currentTime + 0.05; src.start(LIVE.t0); LIVE.audio = ac;
+  });
+}
+
+const HZ = {
+  A1: 55.0, D2: 73.42, F2: 87.31, A2: 110.0, D3: 146.83, F3: 174.61, A3: 220.0, C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23,
+  Fs4: 369.99, A4: 440.0, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, Fs5: 739.99, A5: 880.0, D6: 1174.66, A6: 1760.0,
+};
+function makeNoise(ac, sec) {
+  const b = ac.createBuffer(1, Math.floor(sec * ac.sampleRate), ac.sampleRate), d = b.getChannelData(0), R = RNG('noise');
+  for (let i = 0; i < d.length; i++) d[i] = R.f() * 2 - 1;
+  return b;
+}
+function makeImpulse(ac, sec, decay) {
+  const n = Math.floor(sec * ac.sampleRate), b = ac.createBuffer(2, n, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c), R = RNG('ir', c); for (let i = 0; i < n; i++) d[i] = (R.f() * 2 - 1) * Math.pow(1 - i / n, decay); }
+  return b;
+}
+function encodeWav(left, right, sr) {
+  const n = left.length, buf = new ArrayBuffer(44 + n * 4), v = new DataView(buf);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4, 36 + n * 4, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true);
+  ws(36, 'da' + 'ta'); v.setUint32(40, n * 4, true);
+  let o = 44;
+  for (let i = 0; i < n; i++) { v.setInt16(o, Math.round(clamp(left[i], -1, 1) * 32767), true); v.setInt16(o + 2, Math.round(clamp(right[i], -1, 1) * 32767), true); o += 4; }
+  return new Uint8Array(buf);
+}
+
+
+const MIDI = (m) => 440 * 2 ** ((m - 69) / 12);
+const NOTE = { D2: 38, A2: 45, D3: 50, E3: 52, Fs3: 54, A3: 57, D4: 62, E4: 64, Fs4: 66, G4: 67, A4: 69, B4: 71, Cs5: 73, D5: 74, E5: 76, Fs5: 78, A5: 81, B5: 83, D6: 86, E6: 88, Fs6: 90, A6: 93 };
+// any note name: 'D4', 'Fs4' / 'F#4' (sharp), 'Bb3' (flat); the table above is the fast path
+function noteNum(n) {
+  if (NOTE[n] != null) return NOTE[n];
+  const m = /^([A-G])(s|#|b)?(-?\d)$/.exec(n); if (!m) throw new Error(`unknown note "${n}"`);
+  return 12 * (Number(m[3]) + 1) + { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] === 'b' ? -1 : m[2] ? 1 : 0);
+}
+const nz = (n) => MIDI(noteNum(n));
+async function buildScore(sampleRate = 48000, part = 'mix', normIn = null) {
+  const TAIL = 3.0, len = Math.ceil((LOOP_T + TAIL) * sampleRate);
+  const ac = new OfflineAudioContext(2, len, sampleRate);
+  const master = ac.createGain(); master.gain.value = 0.8;
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 3.5; comp.attack.value = 0.004; comp.release.value = 0.2;
+  master.connect(comp); comp.connect(ac.destination);
+  const musicBus = ac.createGain(), sfxBus = ac.createGain();
+  musicBus.gain.value = part === 'sfx' ? 0 : 1; sfxBus.gain.value = part === 'music' ? 0 : 1;
+  musicBus.connect(master); sfxBus.connect(master);
+  // ducking + presence dip, driven by the narration (lines closer than 0.29s are merged)
+  const duck = ac.createGain(), dip = ac.createBiquadFilter();
+  dip.type = 'peaking'; dip.frequency.value = 2500; dip.Q.value = 1;
+  duck.connect(dip); dip.connect(musicBus);
+  const lines = [];
+  for (const n of TIMELINE.narration) { const L = lines[lines.length - 1]; if (L && n.t0 - L.t1 < 0.29) L.t1 = n.t1; else lines.push({ t0: n.t0, t1: n.t1 }); }
+  const DUCK = 10 ** (-3 / 20);
+  duck.gain.setValueAtTime(1, 0); dip.gain.setValueAtTime(0, 0);
+  for (const L of lines) {
+    duck.gain.setValueAtTime(1, Math.max(0, L.t0 - 0.1)); duck.gain.linearRampToValueAtTime(DUCK, L.t0);
+    duck.gain.setValueAtTime(DUCK, L.t1 + 0.03); duck.gain.linearRampToValueAtTime(1, L.t1 + 0.18);
+    dip.gain.setValueAtTime(0, Math.max(0, L.t0 - 0.1)); dip.gain.linearRampToValueAtTime(-6, L.t0);
+    dip.gain.setValueAtTime(-6, L.t1 + 0.03); dip.gain.linearRampToValueAtTime(0, L.t1 + 0.18);
+  }
+  const mkVerb = (dest, sec = 1.6, decay = 2.8, level = 0.3) => { const v = ac.createConvolver(); v.buffer = makeImpulse(ac, sec, decay); const g = ac.createGain(); g.gain.value = level; v.connect(g); g.connect(dest); return v; };
+  const verbs = { m: mkVerb(duck), s: mkVerb(sfxBus) }, shortVerb = verbs.m, longVerb = mkVerb(duck, 3.6, 1.6, 0.55);
+  const noise = makeNoise(ac, 3.0);
+  let to = 'm';   // which bus the helpers below write to
+
+  // the gain is silent until the envelope starts (a GainNode defaults to 1: a note whose oscillator starts first would click)
+  const env = (g, t, a, peak, d) => { g.gain.value = 0.0001; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); };
+  const out = (node, pan = 0, send = 0) => {
+    const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); node.connect(p); p.connect(to === 'm' ? duck : sfxBus);
+    if (send) { const s = ac.createGain(); s.gain.value = send; node.connect(s); s.connect(verbs[to]); }
+  };
+  const osc = (type, f, t, stop) => { const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(stop); return o; };
+  function pluck(t, f, vel, pan = 0, dur = 0.32, bright = 3200, send = 0.25) {
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2.5;
+    lp.frequency.setValueAtTime(bright, t); lp.frequency.exponentialRampToValueAtTime(380, t + dur);
+    const g = ac.createGain(); env(g, t, 0.003, vel, dur);
+    const g2 = ac.createGain(); g2.gain.value = 0.3;
+    osc('triangle', f, t, t + dur + 0.05).connect(lp);
+    osc('sine', f * 2.004, t, t + dur + 0.05).connect(g2); g2.connect(lp);
+    lp.connect(g); out(g, pan, send);
+  }
+  function noiseHit(t, dur, type, freq, q, vel, pan = 0, send = 0, sweepTo = 0) {
+    const src = ac.createBufferSource(); src.buffer = noise;
+    const f = ac.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(freq, t);
+    if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur);
+    const g = ac.createGain(); env(g, t, Math.min(0.004, dur * 0.3), vel, dur);
+    src.connect(f); f.connect(g); out(g, pan, send);
+    src.start(t, (t * 7.31) % 2.0); src.stop(t + dur + 0.05);
+  }
+  function sub(t, vel) {
+    const o = osc('sine', 120, t, t + 0.8); o.frequency.exponentialRampToValueAtTime(36, t + 0.3);
+    const g = ac.createGain(); env(g, t, 0.004, vel, 0.6); o.connect(g); out(g);
+    noiseHit(t, 0.07, 'lowpass', 1100, 0.7, vel * 0.45);
+  }
+  function sweep(t0, t1, vel, f0, f1, pan = 0) {
+    const src = ac.createBufferSource(); src.buffer = noise; src.loop = true;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.1;
+    f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(f1, t1);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vel, t1 - 0.03); g.gain.linearRampToValueAtTime(0.0001, t1 + 0.005);
+    src.connect(f); f.connect(g); out(g, pan, 0.2); src.start(t0, (t0 * 3.1) % 1.0); src.stop(t1 + 0.05);
+  }
+  function riser(t0, t1, vel) {
+    const o = osc('sawtooth', 110, t0, t1 + 0.02); o.frequency.exponentialRampToValueAtTime(1320, t1);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 6; lp.frequency.setValueAtTime(300, t0); lp.frequency.exponentialRampToValueAtTime(5000, t1);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vel, t1 - 0.01); g.gain.linearRampToValueAtTime(0.0001, t1 + 0.01);
+    o.connect(lp); lp.connect(g); out(g, 0, 0.3);
+    sweep(t0, t1, vel * 0.9, 400, 7000);
+  }
+  function chime(t, freqs, vel, pan = 0) {
+    freqs.forEach((f, i) => { const g = ac.createGain(), ti = t + i * 0.012; env(g, ti, 0.002, vel / (1 + i * 0.4), 1.3); osc('sine', f, ti, ti + 1.5).connect(g); out(g, pan + (i - 1) * 0.25, 0.6); });
+  }
+  function bass(t, f, vel) { const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; const g = ac.createGain(); env(g, t, 0.006, vel, 0.28); osc('triangle', f, t, t + 0.35).connect(lp); lp.connect(g); out(g); }
+  function blip(t, f0, f1, dur, vel, pan = 0) { const o = osc('sine', f0, t, t + dur + 0.05); o.frequency.exponentialRampToValueAtTime(f1, t + dur); const g = ac.createGain(); env(g, t, 0.002, vel, dur); o.connect(g); out(g, pan, 0.2); }
+
+  // ---- v2 instruments built from the helpers above
+  function pad(t0, t1, notes, peak, o = {}) {
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.cut ?? 1200; lp.Q.value = 0.7;
+    const g = ac.createGain(), hold = o.swellTo ?? peak;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + (o.att ?? 0.4));
+    if (o.swellTo) g.gain.linearRampToValueAtTime(o.swellTo, o.swellAt);
+    g.gain.setValueAtTime(hold, t1 - (o.rel ?? 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, t1);
+    notes.forEach((n, i) => { for (const det of [-7, 7]) { const oo = osc(o.type ?? 'sawtooth', nz(n), t0, t1 + 0.05); oo.detune.value = det + i; oo.connect(lp); } });
+    lp.connect(g); out(g, o.pan ?? 0, o.send ?? 0.4);
+  }
+  function drone(t0, t1, f, peak, o = {}) {
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + (o.att ?? 0.5));
+    g.gain.setValueAtTime(peak, t1 - (o.rel ?? 0.4)); g.gain.exponentialRampToValueAtTime(0.0001, t1);
+    osc('sine', f, t0, t1 + 0.05).connect(g); out(g, 0, 0);
+  }
+  const claudeMotif = (t, notes, vel) => notes.forEach(([n, dt], i) => pluck(t + dt, nz(n), vel, -0.15 + i * 0.1, 0.6, 1300, 0.35));
+  const childMotif = (t, notes, vel, bright = 5200, send = 0.3) => notes.forEach(([n, dt], i) => pluck(t + dt, nz(n), vel, 0.2 - i * 0.1, 0.32, bright, send));
+  // SCORE BODY — market-data-test (inside buildScore(); see kit/score-head.js)
+  // 12s, 120 BPM, upbeat dancey: driving kick on every quarter + 8th-note plucks + bright pad + a chord stab on the payoff.
+  const T = TIMELINE, cu = T.cues;
+  to = 'm';
+  // a driving 4-on-the-floor kick: a noise hit on every quarter (BEAT)
+  for (let bar = 0; bar < 12; bar++) {
+    noiseHit(bar * BEAT, 0.05, 'lowpass', 120, 8, 0.06, -0.05);                  // kick
+    noiseHit(bar * BEAT + BEAT / 2, 0.04, 'lowpass', 220, 6, 0.05, -0.10);        // snare on 2 and 4 (off-beat)
+  }
+  // 8th-note plucks: a bright pluck on every 8th for the dancey feel
+  for (let i = 0; i < 48; i++) {
+    const t = i * E8;
+    if (t < DURATION) pluck(t, 880 + (i % 4) * 110, 0.025, 0.0, 0.18, 2400, 0.22);
+  }
+  // a bright pad through the whole piece
+  pad(0.0, 12.0, ['A3', 'C4', 'E4', 'G4'], 0.025, { type: 'sawtooth', cut: 2400, att: 0.05, rel: 0.2, send: 0.3 });
+  // a sweep into the morph (5.7 - 6.3)
+  sweep(5.7, 6.3, 0.012, 400, 3200, 0);
+  // payoff hit: a chord stab on the big "11" (10.0s)
+  noiseHit(10.0, 0.04, 'bandpass', 800, 4, 0.07, -0.05);
+  to = 's';
+  // blip on each order book row reveal (7.5 - 8.8)
+  for (let i = 0; i < 5; i++) blip(7.5 + i * 0.1, 1400, 600, 0.02, 0.04);
+  for (let i = 0; i < 5; i++) blip(8.05 + i * 0.1, 1200, 600, 0.02, 0.04);
+  // candle-by-candle chimes (7.0 - 7.6)
+  for (let i = 0; i < 14; i++) blip(7.0 + i * 0.06, 1600 + i * 60, 400, 0.015, 0.03);
+  // =====================================================================
+  //  kit/score-tail.js — render, fold the tail over the loop point, loudness stage
+  //  (RMS-normalise to -17 dBFS, look-ahead limiter at -1 dBFS; stems share the mix gain curve)
+  // =====================================================================
+  const buf = await ac.startRendering();
+  // fold the tail over the loop point so the loop is seamless
+  const N = Math.round(LOOP_T * sampleRate), L = new Float32Array(N), Rr = new Float32Array(N);
+  const c0 = buf.getChannelData(0), c1 = buf.getChannelData(1);
+  for (let i = 0; i < N; i++) { L[i] = c0[i] + (i + N < len ? c0[i + N] : 0); Rr[i] = c1[i] + (i + N < len ? c1[i + N] : 0); }
+  // loudness for a phone (subagents-short): RMS-normalise to -17 dBFS, then a look-ahead limiter at -1 dBFS.
+  // Stems reuse the mix's gain and gain curve, so they sum back to the mix.
+  let k = normIn?.k, g = normIn?.g;
+  if (!g) {
+    let sum = 0; for (let i = 0; i < N; i++) sum += (L[i] * L[i] + Rr[i] * Rr[i]) / 2;
+    k = 10 ** (-17 / 20) / Math.sqrt(sum / N || 1e-12);
+    const ceil = 0.89; g = new Float32Array(N);
+    for (let i = 0; i < N; i++) { const p = Math.max(Math.abs(L[i]), Math.abs(Rr[i])) * k; g[i] = p > ceil ? ceil / p : 1; }
+    const att = Math.exp(-1 / (0.0015 * sampleRate)), rel = Math.exp(-1 / (0.09 * sampleRate));
+    for (let i = N - 2; i >= 0; i--) g[i] = Math.min(g[i], 1 - (1 - g[i + 1]) * att);
+    let r = 1; for (let i = 0; i < N; i++) { r = Math.min(g[i], 1 - (1 - r) * rel); g[i] = r; }
+  }
+  for (let i = 0; i < N; i++) { L[i] *= k * g[i]; Rr[i] *= k * g[i]; }
+  return { left: L, right: Rr, sampleRate, norm: { k, g } };
+}
+function wavB64(s) {
+  const bytes = encodeWav(s.left, s.right, s.sampleRate);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function renderAudioWav() { return wavB64(await buildScore(48000, 'mix')); }
+async function renderAudioStems() {
+  const mix = await buildScore(48000, 'mix');
+  const music = await buildScore(48000, 'music', mix.norm), sfx = await buildScore(48000, 'sfx', mix.norm);
+  return { music: wavB64(music), sfx: wavB64(sfx) };
+}
+window.renderAudioWav = renderAudioWav;
+window.renderAudioStems = renderAudioStems;
+</script>
+</body>
+</html>

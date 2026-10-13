@@ -115,14 +115,16 @@ function dsAccent(x, y, w, key, o = {}) {
 // a small cyan pill, used for the gerowallet.io CTA on the end card.
 function dsPill(str, x, y, size, o = {}) {
   ctx.save();
-  const w = ctx.measureText(str).width + size * 1.3, h = size * 1.7;
+  // measure the text first, then size the pill with generous padding so the text always fits
+  ctx.font = `600 ${size}px ${DSF}`;
+  const tw = ctx.measureText(str).width;
+  const w = tw + size * 2.4, h = size * 1.9;
   const cx = x, cy = y;
   const grad = ctx.createLinearGradient(cx - w / 2, cy, cx + w / 2, cy);
   grad.addColorStop(0, DSB.cyanHi);
   grad.addColorStop(1, DSB.cyanLo);
   ctx.translate(cx, cy);
   paint(rrectPts(-w / 2, -h / 2, w, h, h / 2), { fill: grad, line: DSB.cyanLo, w: 1.5, key: 'pill' + str });
-  ctx.font = `600 ${size}px ${DSF}`;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   ctx.fillStyle = DSB.bg;
