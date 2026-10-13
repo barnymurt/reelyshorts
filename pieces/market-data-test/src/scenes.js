@@ -1,69 +1,66 @@
 // =====================================================================
-//  SCENES — market-data-test. 4 beats, F4 mission, 2 eras joined by one shape morph.
-//  Era 1 (0-6s): the WANT + SETUP — a card with three token rows.
-//  Era 2 (6-12s): the PROOF + PAYOFF — order book, candle chart, Nexus callout, big stat, end card.
+//  SCENES — market-data-test v2.
+//  Era 1 (0-6s): THE PROBLEM. 5 fake browser tabs, 5 prices for one token.
+//  Era 2 (6-12s): THE FIX. One wallet, every venue. gerowallet.io CTA.
 // =====================================================================
 
-// -- a small token row: ticker, price, 24h change, sparkline.
-function dsTokenRow(x, y, w, h, ticker, price, change, sparkSeed, key) {
-  const R = RNG('spark', key);
-  // background: a thin surface card
+// -- a fake browser tab: a small rect with a dot, a DEX name, and a price.
+function dsTab(x, y, w, h, dex, price, active, key) {
   paint(rrectPts(x, y, w, h, 8), {
-    fill: DSB.surface, line: DSB.lineDark, w: 1.5, key: key + 'b',
+    fill: active ? DSB.surface2 : DSB.surface, line: active ? DSB.cyan : DSB.lineDark, w: active ? 2.5 : 1.5, key: key + 'b',
     tex: [{ k: 'pencil', c: DSB.surface2, al: 0.3, per: 90 }],
   });
-  // ticker on the left
+  // little traffic-light dot
   ctx.save();
-  ctx.font = `700 36px ${DSM}`;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = DSB.type;
-  ctx.fillText(ticker, x + 22, y + h / 2);
-  // price in the middle
-  ctx.font = `500 32px ${DSM}`;
-  ctx.textAlign = 'center';
-  ctx.fillStyle = DSB.type;
-  ctx.fillText(price, x + w / 2 - 60, y + h / 2);
-  // change % on the right
-  ctx.font = `500 28px ${DSM}`;
-  ctx.textAlign = 'right';
-  ctx.fillStyle = change.startsWith('+') ? DSB.cyan : DSB.muted;
-  ctx.fillText(change, x + w - 22, y + h / 2);
-  // small sparkline in the gap between price and change
-  const sx = x + w / 2 + 10, sy = y + h / 2, sw = 70, sh = h * 0.5;
-  const pts = [];
-  for (let i = 0; i < 14; i++) {
-    const v = 0.5 + R.n(0.32) + (change.startsWith('+') ? i * 0.012 : -i * 0.008);
-    pts.push([sx + (i / 13) * sw, sy + (0.5 - clamp(v)) * sh]);
-  }
-  // a faint area under the line (stippled)
-  ctx.save();
+  ctx.fillStyle = active ? DSB.cyan : DSB.lineDark;
   ctx.beginPath();
-  ctx.moveTo(pts[0][0], sy + sh * 0.5);
-  for (const p of pts) ctx.lineTo(p[0], p[1]);
-  ctx.lineTo(pts[pts.length - 1][0], sy + sh * 0.5);
-  ctx.closePath();
-  ctx.fillStyle = change.startsWith('+') ? 'rgba(12, 163, 251, 0.18)' : 'rgba(159, 176, 191, 0.12)';
+  ctx.arc(x + 22, y + h / 2, 5, 0, TAU);
   ctx.fill();
   ctx.restore();
-  // the line itself
-  ink(pts, { w: 2, color: change.startsWith('+') ? DSB.cyan : DSB.line, key: key + 's', amt: 0.8 });
+  // DEX name (left)
+  ctx.save();
+  ctx.font = `500 20px ${DSF}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = active ? DSB.type : DSB.muted;
+  ctx.fillText(dex, x + 42, y + h / 2);
+  // price (right)
+  ctx.font = `500 20px ${DSM}`;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = active ? DSB.cyan : DSB.type;
+  ctx.fillText('$' + price, x + w - 20, y + h / 2);
   ctx.restore();
 }
 
-// -- a small candle: body + wicks. bullish = cyan, bearish = muted.
-function dsCandle(cx, cyTop, bodyH, wickH, bullish, key) {
-  const bodyTop = cyTop - bodyH;
-  const bodyBot = cyTop;
-  // wick
-  ink([[cx, cyTop - wickH], [cx, bodyBot + wickH * 0.2]], { w: 1.5, color: bullish ? DSB.cyan : DSB.muted, key: key + 'w', amt: 0.3 });
-  // body
-  paint(rrectPts(cx - 8, bodyTop, 16, bodyH, 2), {
-    fill: bullish ? DSB.cyan : DSB.surface2, line: bullish ? DSB.cyan : DSB.line, w: 1.5, key,
-  });
+// -- the Gero wallet card (one wallet, every venue)
+function dsGeroCard(x, y, w, h, key) {
+  dsCard(x, y, w, h, key);
+  // the "11 venues" badge in the top-right of the card (within the safe area)
+  paint(rrectPts(x + w - 200, y + 24, 130, 36, 8), { fill: DSB.cyan, key: key + 'badge' });
+  ctx.save();
+  ctx.font = `700 22px ${DSF}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = DSB.bg;
+  ctx.fillText('11 VENUES', x + w - 135, y + 42);
+  ctx.restore();
+  // the "LIVE" indicator in the top-left
+  ctx.save();
+  ctx.fillStyle = DSB.cyan;
+  ctx.beginPath();
+  ctx.arc(x + 30, y + 42, 6, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.font = `600 18px ${DSF}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = DSB.cyan;
+  ctx.fillText('LIVE FROM NEXUS', x + 46, y + 42);
+  ctx.restore();
 }
 
-// -- a small order book row: price (left), size (right), side-coloured.
+// -- an order book row: price (left), size (right), side-coloured.
 function dsBookRow(x, y, w, h, price, size, side, key) {
   paint(rrectPts(x, y, w, h, 4), {
     fill: DSB.surface, line: DSB.lineDark, w: 1, key,
@@ -81,122 +78,156 @@ function dsBookRow(x, y, w, h, price, size, side, key) {
   ctx.restore();
 }
 
-// =====================================================================
-//  ERA 1 (0-6s) — the WANT + SETUP
-// =====================================================================
-function sceneList() {
-  dsBackdrop();
-  // tag pops in
-  dsTag('MARKET DATA', { color: DSB.cyanHi, y: 200, size: 36 });
-  // display title
-  const titleA = 'Every token.';
-  const titleB = 'Every venue.';
-  const showB = clamp((TT - 0.4) / 0.35);
-  ctx.save();
-  ctx.font = `700 96px ${DSF}`;
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = DSB.type;
-  ctx.fillText(titleA, 80, 380);
-  if (showB > 0) {
-    ctx.fillStyle = DSB.cyan;
-    ctx.fillText(titleB, 80, 380 + 100);
-  }
-  ctx.restore();
-  // the card
-  const card = { x: 80, y: 720, w: 920, h: 700 };
-  const cardPop = popS(TIMELINE.cues.card);
-  if (cardPop > 0) {
-    ctx.save();
-    ctx.translate(card.x + card.w / 2, card.y + card.h / 2);
-    ctx.scale(cardPop, cardPop);
-    ctx.translate(-(card.x + card.w / 2), -(card.y + card.h / 2));
-    dsCard(card.x, card.y, card.w, card.h, 'card');
-    // three token rows inside
-    const rowH = 110, rowGap = 50;
-    const rowX = card.x + 50, rowW = card.w - 100;
-    const rows = [
-      { ticker: 'ADA',  price: '$0.2028', change: '-4.2%', seed: 'a' },
-      { ticker: 'GERO', price: '$0.0059', change: '+0.0%', seed: 'g' },
-      { ticker: 'NIGHT',price: '$0.0204', change: '+3.2%', seed: 'n' },
-    ];
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      const y = card.y + 80 + i * (rowH + rowGap);
-      const rowPop = popS(TIMELINE.cues.rows + i * 0.18);
-      if (rowPop > 0) {
-        ctx.save();
-        ctx.translate(rowX + rowW / 2, y + rowH / 2);
-        ctx.scale(rowPop, rowPop);
-        ctx.translate(-(rowX + rowW / 2), -(y + rowH / 2));
-        dsTokenRow(rowX, y, rowW, rowH, r.ticker, r.price, r.change, r.seed, r.ticker);
-        ctx.restore();
-        // the selected (middle) row gets a cyan accent bar on the left
-        if (i === 1) {
-          const a = clamp((TT - 2.6) * 4);
-          ctx.save();
-          ctx.globalAlpha = a;
-          paint(rrectPts(rowX - 8, y + 8, 6, rowH - 16, 3), { fill: DSB.cyan, key: 'sel' + r.ticker });
-          ctx.restore();
-        }
-      }
-    }
-    // the card's right edge (the bridge object) — visible from t=2.4 onward
-    const glow = popS(TIMELINE.cues.glow);
-    if (glow > 0) {
-      ctx.save();
-      ctx.globalAlpha = glow;
-      paint(rrectPts(880, 680, 12, 340, 6), { fill: DSB.cyan, key: 'brR' });
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-  // hero at the bottom
-  dsHero(540, 1300, 70, { key: 'h1' });
-  // caption
-  dsCaption('Live from the chain.', { y: 1500 });
-  // watermark
-  dsWatermark();
+// -- a small candle: body + wicks. bullish = cyan, bearish = muted.
+function dsCandle(cx, cyTop, bodyH, wickH, bullish, key) {
+  const bodyTop = cyTop - bodyH;
+  const bodyBot = cyTop;
+  ink([[cx, cyTop - wickH], [cx, bodyBot + wickH * 0.2]], { w: 1.5, color: bullish ? DSB.cyan : DSB.muted, key: key + 'w', amt: 0.3 });
+  paint(rrectPts(cx - 8, bodyTop, 16, bodyH, 2), {
+    fill: bullish ? DSB.cyan : DSB.surface2, line: bullish ? DSB.cyan : DSB.line, w: 1.5, key,
+  });
 }
 
 // =====================================================================
-//  ERA 2 (6-12s) — the PROOF + PAYOFF
+//  ERA 1 (0-6s) — THE PROBLEM
 // =====================================================================
-function sceneCharts() {
+function sceneProblem() {
   dsBackdrop();
-  // tag
-  dsTag('POWERED BY NEXUS', { color: DSB.cyanHi, y: 200, size: 32 });
-  // small display title
-  ctx.save();
-  ctx.font = `700 80px ${DSF}`;
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = DSB.type;
-  ctx.fillText('Order books.', 80, 360);
-  ctx.fillText('Real trades.', 80, 360 + 84);
-  ctx.restore();
-  // left card: order book
-  const bookCard = { x: 80, y: 560, w: 460, h: 760 };
-  const bookPop = popS(TIMELINE.cues.book);
-  if (bookPop > 0) {
+  // the question (curiosity hook)
+  const q1a = 'Switching tabs to';
+  const q1b = 'track one token?';
+  const showQ1 = clamp((TT - 0.2) / 0.35);
+  if (showQ1 > 0) {
     ctx.save();
-    ctx.translate(bookCard.x + bookCard.w / 2, bookCard.y + bookCard.h / 2);
-    ctx.scale(bookPop, bookPop);
-    ctx.translate(-(bookCard.x + bookCard.w / 2), -(bookCard.y + bookCard.h / 2));
-    dsCard(bookCard.x, bookCard.y, bookCard.w, bookCard.h, 'book');
-    // the bridge's destination — the left edge of this card
-    paint(rrectPts(220, 680, 12, 340, 6), { fill: DSB.cyan, key: 'brL' });
-    // book header
-    ctx.save();
-    ctx.font = `500 22px ${DSF}`;
+    ctx.globalAlpha = showQ1;
+    ctx.font = `700 80px ${DSF}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
-    ctx.fillStyle = DSB.muted;
-    ctx.fillText('ORDER BOOK', bookCard.x + 24, bookCard.y + 24);
-    ctx.textAlign = 'right';
-    ctx.fillText('ADA / USD', bookCard.x + bookCard.w - 24, bookCard.y + 24);
+    ctx.fillStyle = DSB.type;
+    ctx.fillText(q1a, 70, 320);
+    ctx.fillText(q1b, 70, 320 + 92);
     ctx.restore();
-    // asks (top, descending price)
+  }
+  // the 5 fake tabs
+  const tabsIn = popS(TIMELINE.cues.tabs);
+  if (tabsIn > 0) {
+    // the 5 DEXs, the chaos prices
+    const tabs = [
+      { dex: 'MuesliSwap',  price: '0.2028', x:  60, y: 720, active: false },
+      { dex: 'SundaeSwap',  price: '0.2031', x: 360, y: 720, active: true  },
+      { dex: 'WingRiders',  price: '0.2019', x: 660, y: 720, active: false },
+      { dex: 'VyFinance',   price: '0.2034', x: 100, y: 830, active: false },
+      { dex: 'MinSwap',     price: '0.2025', x: 400, y: 830, active: false },
+      { dex: 'Spectrum',    price: '0.2029', x: 700, y: 830, active: false },
+    ];
+    // the price jumps: each tab's price changes at jump1 (t=1.2) and jump2 (t=2.2)
+    const j1 = clamp((TT - 1.2) * 4);
+    const j2 = clamp((TT - 2.2) * 4);
+    const newPrices = [
+      ['0.2031', '0.2026', '0.2017'],   // MuesliSwap: original, j1, j2
+      ['0.2028', '0.2034', '0.2022'],   // SundaeSwap (active): original, j1, j2
+      ['0.2025', '0.2014', '0.2037'],   // WingRiders
+      ['0.2029', '0.2041', '0.2018'],   // VyFinance
+      ['0.2017', '0.2033', '0.2028'],   // MinSwap
+      ['0.2032', '0.2020', '0.2035'],   // Spectrum
+    ];
+    for (let i = 0; i < tabs.length; i++) {
+      const t = tabs[i];
+      const w = 260, h = 64;
+      const pop = tabsIn * (1 - i * 0.05);
+      if (pop > 0) {
+        ctx.save();
+        ctx.translate(t.x + w / 2, t.y + h / 2);
+        ctx.scale(pop, pop);
+        ctx.translate(-(t.x + w / 2), -(t.y + h / 2));
+        // determine the current price based on the jump state
+        const ps = newPrices[i];
+        const price = j2 > 0.5 ? ps[2] : (j1 > 0.5 ? ps[1] : ps[0]);
+        dsTab(t.x, t.y, w, h, t.dex, price, t.active, 'tab' + i);
+        // a small red "?" on inactive tabs to show confusion
+        if (!t.active) {
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          ctx.font = `700 14px ${DSF}`;
+          ctx.textBaseline = 'top';
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#E0584A';
+          ctx.fillText('?', t.x + w - 20, t.y + h - 18);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+    }
+  }
+  // the labels at the bottom of era 1: "5 sites. 5 order books. 5 candles."
+  const lbl = popS(TIMELINE.cues.labels);
+  if (lbl > 0) {
+    ctx.save();
+    ctx.globalAlpha = lbl;
+    ctx.font = `600 44px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('5 sites.  5 order books.  5 candles.', CX, 1040);
+    ctx.restore();
+  }
+  // the bridge object: a thin cyan strip on the active tab (SundaeSwap)
+  // visible from t=4.8 onward, fading into the morph
+  const bridge = clamp((TT - 4.8) * 3);
+  if (bridge > 0) {
+    ctx.save();
+    ctx.globalAlpha = bridge;
+    paint(rrectPts(460, 770, 8, 200, 4), { fill: DSB.cyan, key: 'brTab' });
+    ctx.restore();
+  }
+  // "There's a better way." — the closing line of era 1
+  const better = popS(TIMELINE.cues.better);
+  if (better > 0) {
+    ctx.save();
+    ctx.globalAlpha = better;
+    ctx.font = `700 56px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText("There's a better way.", CX, 1180);
+    ctx.restore();
+  }
+  // watermark + hero spot
+  dsWatermark();
+  dsHero(180, 1380, 50, { key: 'h1' });
+}
+
+// =====================================================================
+//  ERA 2 (6-12s) — THE FIX
+// =====================================================================
+function sceneFix() {
+  dsBackdrop();
+  // the answer: "Gero has every venue in one tab."
+  const fix = popS(TIMELINE.cues.fix);
+  if (fix > 0) {
+    ctx.save();
+    ctx.globalAlpha = fix;
+    ctx.font = `700 76px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.type;
+    ctx.fillText('Gero has every', 70, 320);
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText('venue in one tab.', 70, 320 + 88);
+    ctx.restore();
+  }
+  // the Gero wallet card (replacing the 5 tabs)
+  const gerCard = { x: 80, y: 560, w: 920, h: 640 };
+  const cardIn = popS(TIMELINE.cues.chart);
+  if (cardIn > 0) {
+    ctx.save();
+    ctx.translate(gerCard.x + gerCard.w / 2, gerCard.y + gerCard.h / 2);
+    ctx.scale(cardIn, cardIn);
+    ctx.translate(-(gerCard.x + gerCard.w / 2), -(gerCard.y + gerCard.h / 2));
+    dsGeroCard(gerCard.x, gerCard.y, gerCard.w, gerCard.h, 'gero');
+    // the bridge's destination: the right edge of this card
+    paint(rrectPts(980, 600, 8, 560, 4), { fill: DSB.cyan, key: 'brG' });
+    // left: order book
     const asks = [
       ['0.2031', '4,210.50'],
       ['0.2029', '1,820.00'],
@@ -211,73 +242,67 @@ function sceneCharts() {
       ['0.2021', '1,560.00'],
       ['0.2020', '2,800.00'],
     ];
-    const rowH = 52, rowGap = 4;
-    const startY = bookCard.y + 80;
+    const bookH = 40, bookGap = 4;
+    const bookX = gerCard.x + 24, bookW = gerCard.w / 2 - 48;
+    const bookY = gerCard.y + 96;
+    // ORDER BOOK label
+    ctx.save();
+    ctx.font = `500 18px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('ORDER BOOK · ADA / USD', bookX, gerCard.y + 70);
+    ctx.restore();
     for (let i = 0; i < asks.length; i++) {
-      const y = startY + i * (rowH + rowGap);
+      const y = bookY + i * (bookH + bookGap);
       const pop = clamp((TT - (TIMELINE.cues.book + 0.15 + i * 0.05)) * 4);
       if (pop > 0) {
         ctx.save();
         ctx.globalAlpha = pop;
-        dsBookRow(bookCard.x + 24, y, bookCard.w - 48, rowH, asks[i][0], asks[i][1], 'ask', 'ask' + i);
+        dsBookRow(bookX, y, bookW, bookH, asks[i][0], asks[i][1], 'ask', 'ask' + i);
         ctx.restore();
       }
     }
-    // spread
-    const spreadY = startY + 5 * (rowH + rowGap) + 12;
+    const spreadY = bookY + 5 * (bookH + bookGap) + 14;
     ctx.save();
-    ctx.font = `600 24px ${DSM}`;
+    ctx.font = `600 18px ${DSM}`;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillStyle = DSB.cyan;
-    ctx.fillText('SPREAD  0.0003', bookCard.x + bookCard.w / 2, spreadY);
+    ctx.fillText('SPREAD  0.0003', bookX + bookW / 2, spreadY);
     ctx.restore();
     for (let i = 0; i < bids.length; i++) {
-      const y = spreadY + 30 + i * (rowH + rowGap);
+      const y = spreadY + 28 + i * (bookH + bookGap);
       const pop = clamp((TT - (TIMELINE.cues.book + 0.45 + i * 0.05)) * 4);
       if (pop > 0) {
         ctx.save();
         ctx.globalAlpha = pop;
-        dsBookRow(bookCard.x + 24, y, bookCard.w - 48, rowH, bids[i][0], bids[i][1], 'bid', 'bid' + i);
+        dsBookRow(bookX, y, bookW, bookH, bids[i][0], bids[i][1], 'bid', 'bid' + i);
         ctx.restore();
       }
     }
-    ctx.restore();
-  }
-  // right card: candle chart
-  const chartCard = { x: 560, y: 560, w: 440, h: 360 };
-  const chartPop = popS(TIMELINE.cues.chart);
-  if (chartPop > 0) {
+    // right: candle chart
+    const chartX = gerCard.x + gerCard.w / 2 + 24;
+    const chartW = gerCard.w / 2 - 48;
+    const chartTop = gerCard.y + 110;
+    const chartBottom = gerCard.y + gerCard.h - 60;
+    // CANDLES label
     ctx.save();
-    ctx.translate(chartCard.x + chartCard.w / 2, chartCard.y + chartCard.h / 2);
-    ctx.scale(chartPop, chartPop);
-    ctx.translate(-(chartCard.x + chartCard.w / 2), -(chartCard.y + chartCard.h / 2));
-    dsCard(chartCard.x, chartCard.y, chartCard.w, chartCard.h, 'chart');
-    // header
-    ctx.save();
-    ctx.font = `500 22px ${DSF}`;
+    ctx.font = `500 18px ${DSF}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     ctx.fillStyle = DSB.muted;
-    ctx.fillText('CANDLES', chartCard.x + 24, chartCard.y + 24);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = DSB.type;
-    ctx.fillText('ADA / USD · 1H', chartCard.x + chartCard.w - 24, chartCard.y + 24);
+    ctx.fillText('CANDLES · 1H', chartX, gerCard.y + 70);
     ctx.restore();
-    // candles
-    const chartLeft = chartCard.x + 30;
-    const chartRight = chartCard.x + chartCard.w - 30;
-    const chartTop = chartCard.y + 70;
-    const chartBottom = chartCard.y + chartCard.h - 30;
-    const cw = (chartRight - chartLeft) / 14;
+    const cw = chartW / 16;
     const R = RNG('candles');
-    for (let i = 0; i < 14; i++) {
-      const cx = chartLeft + i * cw + cw / 2;
+    for (let i = 0; i < 16; i++) {
+      const cx = chartX + i * cw + cw / 2;
       const center = (chartTop + chartBottom) / 2;
-      const bodyH = 30 + R.r(0, 50);
-      const wickH = 10 + R.r(0, 18);
-      const bullish = i > 4 && i < 11;
-      const pop = clamp((TT - (TIMELINE.cues.chart + 0.2 + i * 0.04)) * 5);
+      const bodyH = 40 + R.r(0, 80);
+      const wickH = 12 + R.r(0, 24);
+      const bullish = i > 5 && i < 12;
+      const pop = clamp((TT - (TIMELINE.cues.chart + 0.2 + i * 0.03)) * 5);
       if (pop > 0) {
         ctx.save();
         ctx.globalAlpha = pop;
@@ -285,58 +310,50 @@ function sceneCharts() {
         ctx.restore();
       }
     }
-    // axis line at the bottom
-    ink([[chartLeft, chartBottom + 4], [chartRight, chartBottom + 4]], { w: 1, color: DSB.lineDark, key: 'axis' });
+    ink([[chartX, chartBottom + 4], [chartX + chartW, chartBottom + 4]], { w: 1, color: DSB.lineDark, key: 'axis' });
     ctx.restore();
   }
-  // stats card (smaller, stacked: big "11" on the left, labels on the right)
-  const statsCard = { x: 560, y: 940, w: 440, h: 380 };
-  const statPop = popS(TIMELINE.cues.stat);
-  if (statPop > 0) {
+  // the stat strip below the card: "11 venues.  Real trades.  1 wallet."
+  const stat = popS(TIMELINE.cues.stat);
+  if (stat > 0) {
     ctx.save();
-    ctx.translate(statsCard.x + statsCard.w / 2, statsCard.y + statsCard.h / 2);
-    ctx.scale(statPop, statPop);
-    ctx.translate(-(statsCard.x + statsCard.w / 2), -(statsCard.y + statsCard.h / 2));
-    dsCard(statsCard.x, statsCard.y, statsCard.w, statsCard.h, 'stats');
-    // big "11" on the left
-    ctx.save();
-    ctx.font = `700 160px ${DSF}`;
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = DSB.cyan;
-    ctx.fillText('11', statsCard.x + 30, statsCard.y + statsCard.h / 2);
-    // a thin vertical divider
-    paint(rrectPts(statsCard.x + 200, statsCard.y + 60, 2, statsCard.h - 120, 1), { fill: DSB.lineDark, key: 'sdiv' });
-    // three labels on the right, stacked
-    ctx.font = `500 26px ${DSF}`;
-    ctx.textAlign = 'left';
+    ctx.globalAlpha = stat;
+    ctx.font = `600 38px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+    // three segments with the numbers in cyan
     ctx.fillStyle = DSB.type;
-    ctx.fillText('DEX venues indexed', statsCard.x + 230, statsCard.y + 100);
-    ctx.font = `500 22px ${DSF}`;
-    ctx.fillStyle = DSB.muted;
-    ctx.fillText('real trades', statsCard.x + 230, statsCard.y + 150);
-    ctx.fillText('live, in your wallet', statsCard.x + 230, statsCard.y + 190);
-    // a cyan accent under the labels
-    const a = clamp((TT - 10.6) * 3);
-    if (a > 0) {
-      ctx.save();
-      ctx.globalAlpha = a;
-      paint(rrectPts(statsCard.x + 230, statsCard.y + 230, 120, 3, 1), { fill: DSB.cyan, key: 'sund' });
-      ctx.restore();
-    }
-    ctx.restore();
+    ctx.fillText('11 venues.', CX - 280, 1240);
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText('Real trades.', CX, 1240);
+    ctx.fillStyle = DSB.type;
+    ctx.fillText('1 wallet.', CX + 280, 1240);
     ctx.restore();
   }
-  // hero at y=1380 (above the safe area edge at y=1500)
-  dsHero(160, 1380, 45, { key: 'h2', mood: 'wow' });
-  // the gerowallet.io pill just above the safe area, centered-right
-  const pillPop = popS(TIMELINE.cues.pill);
-  if (pillPop > 0) {
+  // the gerowallet.io CTA — bigger and more prominent than v1
+  const pill = popS(TIMELINE.cues.pill);
+  if (pill > 0) {
     ctx.save();
-    ctx.globalAlpha = pillPop;
-    dsPill('gerowallet.io', 780, 1380, 24);
+    ctx.globalAlpha = pill;
+    dsPill('gerowallet.io/wallet/market-data', CX, 1340, 30);
     ctx.restore();
   }
-  // watermark
+  // the loop tease: "Tomorrow: 60-second order book" (fades in at 11.4s)
+  const tease = clamp((TT - 11.4) * 4);
+  if (tease > 0) {
+    ctx.save();
+    ctx.globalAlpha = tease;
+    ctx.font = `500 22px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('Tomorrow: a 60-second order book', CX, 1440);
+    // a small "•" separator
+    ctx.fillText('•', CX, 1465);
+    ctx.fillText('Part 2 of the Gero series', CX, 1485);
+    ctx.restore();
+  }
+  // watermark + hero
   dsWatermark();
+  dsHero(180, 1380, 50, { key: 'h2', mood: 'wow' });
 }

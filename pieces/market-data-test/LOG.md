@@ -1,17 +1,29 @@
 # market-data-test LOG
 
-Build log for the 12s 9:16 test piece. First full piece using the thedigitalstag style.
+Build log for the 12s 9:16 test piece. v2 restructured around a curiosity hook and a clear payoff.
 
-## 2026-10-12 — first build
+## 2026-10-13 — v2 (rewrite)
 
-- Scaffolded `pieces/market-data-test/` with `piece.json`, `brief.md`, `LOG.md`, and the `src/` quartet (head.html, bridges.js, scenes.js, score.js).
-- 12s, 9:16, 24fps, 120 BPM. F4 mission (4 beats + payoff). 2 eras joined by one shape morph.
-- No voice. Procedural score at 120 BPM: driving kick + off-beat snare + 8th-note plucks + sawtooth pad + a sweep into the morph + a payoff hit.
-- Subject: https://gerowallet.io/wallet/market-data/ — explains that Gero's Market tab and every token page are fed by Nexus, indexed from 11 Cardano DEX venues, checked against real trades.
-- Cyan accent used subtly (locked to Gero content): tag, selected row, bridge strip, "SPREAD 0.0003", the big "11", the gerowallet.io pill.
+User feedback (after comparing to a fit50 reference):
+- The piece needs a **curiosity hook** that poses a problem the viewer has
+- It needs a **clear payoff** — the viewer should know what the video is about and where to go
+- The **logo** should be the actual PNG, not a code-drawn silhouette
+- The logo file had white corners — reprocessed `stag-circle.png` with proper alpha transparency
+- The logo should only appear in the top-left, not as a hero
+
+What changed in v2:
+- Era 1 rewritten as the **problem**: "Switching tabs to track one token?" with 6 fake browser tabs showing 6 different prices for the same token (the chaos)
+- Era 2 rewritten as the **fix**: "Gero has every venue in one tab" with the order book + candle chart (the proof)
+- New "11 venues. Real trades. 1 wallet." stat strip
+- New "gerowallet.io/wallet/market-data" CTA pill (bigger and more prominent)
+- New "Tomorrow: a 60-second order book / Part 2 of the Gero series" loop tease
+- `dsWatermark()` in `styles/thedigitalstag/kit.js` rewritten to use the actual `stag-circle.png` PNG via the animate toolkit's `asset()` function
+- `brands/thedigitalstag/logos/stag-circle.png` reprocessed with `pillow` — corners are now `(0,0,0,0)` (fully transparent)
+- Pieces now include `pieces/<name>/assets/stag-circle.png` (copied from the brand folder)
+- Hero is still a code-drawn small spot at the bottom (different element from the logo)
 
 ## Open / follow-ups
 
-- Captions: written into `piece.json` `captions` (twitter / instagram / youtube). The gallery/exporter will surface them.
-- Real Gero UI screenshots: the order book + candle chart in the piece are drawn from the description, not from a real screenshot. The hand-drawn version is fast and brand-consistent; the real-UI version would need a `tools/capture.mjs` run on the live page or an H3 Ref2VA pass.
-- If H3 is wired: the candle chart and order book could be replaced with H3 Ref2VA outputs of a real Gero dashboard screenshot, with the same animate chrome on top.
+- The "5 sites. 5 order books. 5 candles." line is a beat too late — the prices have been jumping for 2 seconds before it lands. Consider moving it earlier or making it the first thing after the question.
+- The "Tomorrow" tease is small. If the loop-back lands on a viewer who just saw the tease, they'll see "Switching tabs to track one token?" — which is fine, but the tease is a separate signal. Could add a "1/4" progress indicator if thedigitalstag does a series.
+- The Gero card is hand-drawn. If H3 is wired (pattern A: Ref2VA from a real Gero screenshot), the card would be a real wallet UI, much more convincing.

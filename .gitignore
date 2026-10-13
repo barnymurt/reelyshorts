@@ -10,6 +10,7 @@ dist/
 # Pieces
 pieces/*/dist/
 pieces/*/frames/
+pieces/*/frames-*/
 pieces/*/audio/*.wav
 pieces/*/audio/*.mp3
 pieces/*/.build/

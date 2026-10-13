@@ -174,38 +174,38 @@ function dsHero(x, y, r, o = {}) {
 const dsHeroOutline = (x, y, r) => ellipsePts(x, y, r, r * 0.95, 0, 96);
 
 // ---------------------------------------------------------------------
-//  WATERMARK: the stag-circle in the top-left corner. Drawn through DEFER so it
-//  sits over the camera. Half opacity, small, present throughout.
-//  We draw a stylised stag silhouette (a circle with two tiny antler marks) so
-//  it reads as the brand without needing the source PNG embedded in the canvas.
+//  WATERMARK: the stag-circle logo (actual PNG asset) in the top-left corner.
+//  Drawn through DEFER so it sits over the camera. Higher opacity so it
+//  reads as a brand mark, not a ghost. The wordmark sits to the right.
+//  Pieces must include `assets/stag-circle.png` for this to render.
 // ---------------------------------------------------------------------
+let _STAG_IMG = null;
 function dsWatermark(o = {}) {
   const f = () => {
-    const cx = 100, cy = 110, r = 50;
-    const a = o.al ?? 0.6;
+    const cx = 100, cy = 120, r = 56;
+    const a = o.al ?? 0.92;
+    // load the asset on first use; cache the HTMLImageElement
+    if (!_STAG_IMG) {
+      const im = asset('stag-circle.png');
+      if (!im) return;   // asset not in pieces/<name>/assets/ — silently skip
+      _STAG_IMG = im;
+    }
     ctx.save();
     ctx.globalAlpha = a;
-    // antlers: two thin stag-light curves (visual rhyme with the Gero mark, distinctly ours)
-    const earWiggle = (B % 41) < 2 ? 2.2 : 0;
-    ink([[cx - r * 0.55, cy + r * 0.4], [cx - r * 0.85 + earWiggle, cy - r * 0.6], [cx - r * 0.55, cy - r * 1.1], [cx - r * 0.2, cy - r * 0.85]], { w: 3, color: DSB.line, key: 'wmLe', amt: 1.2 });
-    ink([[cx + r * 0.55, cy + r * 0.4], [cx + r * 0.85 - earWiggle, cy - r * 0.6], [cx + r * 0.55, cy - r * 1.1], [cx + r * 0.2, cy - r * 0.85]], { w: 3, color: DSB.line, key: 'wmRi', amt: 1.2 });
-    // body: a faint stag-blue disc with a thin outline, slightly off-set down
-    paint(ellipsePts(cx, cy + r * 0.5, r * 0.85, r * 0.7, 0, 40), {
-      fill: DSB.ink, line: DSB.line, w: 1.8, key: 'wm',
-      tex: [{ k: 'pencil', c: '#2A4F7A', al: 0.4, per: 90 }],
-    });
-    // two tiny paper-white eyes on the disc
-    ctx.fillStyle = DSB.paper;
-    ctx.beginPath();
-    ctx.ellipse(cx - r * 0.22, cy + r * 0.45, 3.5, 5, 0, 0, TAU);
-    ctx.ellipse(cx + r * 0.22, cy + r * 0.45, 3.5, 5, 0, 0, TAU);
-    ctx.fill();
-    // wordmark "thedigitalstag" — small, to the right
-    ctx.font = `500 24px ${DSF}`;
+    // the logo PNG (447x447, transparent corners, circular crop)
+    ctx.drawImage(_STAG_IMG, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+    // wordmark "thedigitalstag" — to the right of the logo
+    ctx.save();
+    ctx.font = `600 28px ${DSF}`;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillStyle = DSB.line;
-    ctx.fillText('thedigitalstag', cx + r + 18, cy + 8);
+    ctx.fillStyle = DSB.type;
+    ctx.fillText('thedigitalstag', cx + r + 22, cy + 2);
+    // small wordmark subtitle in muted
+    ctx.font = `400 16px ${DSF}`;
+    ctx.fillStyle = DSB.muted;
+    ctx.fillText('Independent Gero content', cx + r + 22, cy + 28);
     ctx.restore();
   };
   if (DEFER) DEFER.push(f); else f();
