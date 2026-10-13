@@ -13,18 +13,20 @@ const DSM = '"JetBrains Mono", "Consolas", "Menlo", monospace';
 // the measured palette (kept as a const so pieces can read it; tokens are also hard-coded
 // in the helper functions for the rendering hot path).
 const DSB = {
-  bg:        '#0E1A28',
+  bg:        '#0A1118',     // darker than before — higher contrast with white type
   surface:   '#142A3E',
   surface2:  '#1B3650',
   line:      '#5A7FA0',
   lineDark:  '#324975',
   ink:       '#1C3E69',
-  paper:     '#EAEEF2',
-  type:      '#EAEEF2',
-  muted:     '#9FB0BF',
-  cyanHi:    '#0CA3FB',
-  cyanLo:    '#00EAEF',
-  cyan:      '#00A8C8',
+  paper:     '#FFFFFF',     // pure white for the main display type
+  type:      '#FFFFFF',     // pure white, not the previous off-white
+  muted:     '#B8C5D2',     // brighter than #9FB0BF so it reads on dark
+  cyanHi:    '#38BDF8',     // brighter cyan (Tailwind sky-400) for higher visibility
+  cyanLo:    '#22D3EE',
+  cyan:      '#0EA5E9',
+  accent:    '#FB923C',     // warm orange accent for energy (used on the key word)
+  glow:      'rgba(56, 189, 248, 0.18)',   // cyan halo for the glow helper
 };
 
 // ---------------------------------------------------------------------
@@ -133,45 +135,57 @@ function dsPill(str, x, y, size, o = {}) {
 }
 
 // ---------------------------------------------------------------------
-//  THE HERO: a small stag-blue spot with two eyes, an idle bob, and a blink.
-//  Sets SPARK_AT for the anchor check. r is the radius in world coords.
+//  GLOW: a soft radial gradient halo behind text. The references use this to
+//  make text feel like it glows off the dark stage. Cheap on canvas.
 // ---------------------------------------------------------------------
-const DS_HERO_PTS_CACHE = new Map();
-function dsHero(x, y, r, o = {}) {
-  const key = o.key ?? 'hero';
-  const mood = o.mood || 'calm';
-  y += Math.sin(TT * TAU * 0.9 + key.length) * r * 0.04;     // idle bob on 2s
-  SPARK_AT = toScreen(x, y);
-  // body: a stag-blue disc, slightly textured
-  const P = ellipsePts(x, y, r, r * 0.95, 0, 56);
-  paint(P, {
-    fill: DSB.ink, line: DSB.line, w: Math.max(2.5, r * 0.08), key,
-    tex: [{ k: 'pencil', c: '#2A4F7A', al: 0.5, per: 60, dens: (px, py) => clamp(1 - (Math.hypot(px - x, py - y) / r) * 0.6) }],
-  });
-  // a thin stag-light highlight at the top-left (the source light direction)
-  const hl = arcPts(x, y, r * 0.86, Math.PI * 1.05, Math.PI * 1.55, 12);
-  ink(hl, { w: Math.max(1.5, r * 0.05), color: DSB.line, key: key + 'hl', amt: 1.0 });
-  // eyes: two paper-white dots, blink
-  const blink = (B + key.length * 7) % 41 < 2;
-  const eyeR = mood === 'wow' ? r * 0.14 : r * 0.1;
-  for (const s of [-1, 1]) {
-    const ex = x + s * r * 0.32, ey = y - r * 0.05;
-    if (blink) {
-      ink([[ex - r * 0.12, ey], [ex + r * 0.12, ey]], { w: r * 0.06, color: DSB.paper, key: key + 'bl' + s, amt: 0.3 });
-    } else {
-      ctx.fillStyle = DSB.paper;
-      ctx.beginPath();
-      ctx.ellipse(ex, ey, eyeR, eyeR * 1.3, 0, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = DSB.bg;
-      ctx.beginPath();
-      ctx.ellipse(ex + s * r * 0.02, ey + r * 0.02, eyeR * 0.45, eyeR * 0.6, 0, 0, TAU);
-      ctx.fill();
-    }
-  }
-  return P;
+function dsGlow(cx, cy, r, color, al = 0.55) {
+  ctx.save();
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, color.replace(/[0-9.]+\)$/, `${al})`));
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  ctx.restore();
 }
-const dsHeroOutline = (x, y, r) => ellipsePts(x, y, r, r * 0.95, 0, 96);
+
+// ---------------------------------------------------------------------
+//  FRAME: large display text. Pure white, bold, with a soft glow shadow.
+//  Lines are split on '\n'. Per-line colors can be passed as opts.color
+//  (string or array of strings). The first line defaults to white;
+//  subsequent lines take from the array.
+// ---------------------------------------------------------------------
+function dsFrame(text, opts = {}) {
+  const lines = text.split('\n');
+  const size = opts.size ?? 160;
+  const lh = size * 1.0;
+  const totalH = lh * lines.length;
+  const yStart = opts.yStart ?? (H / 2 - totalH / 2 + size * 0.35);
+  ctx.save();
+  ctx.textAlign = opts.align || 'left';
+  ctx.textBaseline = 'alphabetic';
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const x = ctx.textAlign === 'center' ? CX : (opts.x ?? 80);
+    const y = yStart + i * lh;
+    const color = (Array.isArray(opts.color) ? opts.color[i] : opts.color) || DSB.paper;
+    // soft glow shadow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = opts.glow ?? 24;
+    ctx.font = `800 ${size}px ${DSF}`;
+    ctx.fillStyle = color;
+    ctx.fillText(line, x, y);
+    // a second pass for crispness (no shadow)
+    ctx.shadowBlur = 0;
+    ctx.fillText(line, x, y);
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------
+//  The "hero" spot is GONE in the new format. We keep a no-op so any
+//  leftover calls don't crash, but new pieces should not use it.
+// ---------------------------------------------------------------------
+function dsHero() { /* removed in the rebuild — the round circle was a v1 leftover */ }
 
 // ---------------------------------------------------------------------
 //  WATERMARK: the stag-circle logo (actual PNG asset) in the top-left corner.
@@ -266,16 +280,19 @@ const STYLE = {
   paper: DSB.bg,                                                      // the sheet a morph happens on (dark, not paper)
   backdrop(c) { dsBackdrop(c); },                                     // the frame filled, with grain + vignette
   window(P, key, src) {                                               // the world seen through outline P: clean rectangular window
+    // In the new no-morph format, P may be undefined. Just draw the era directly.
+    if (!P) return;
     const Q = wobble(P, true, 1.6, key, 8);
     ctx.save(); trace(Q, true); ctx.clip(); ctx.drawImage(src, 0, 0); ctx.restore();
     ctx.save(); ink(Q, { closed: true, w: 3.0, color: DSB.line, key: key + 'rim', amt: 1.4 }); ctx.restore();
   },
   blob(P, c, key) {                                                   // the morphing shape: a stag-light slab
+    if (!P) return;
     paint(wobble(P, true, 1.2, key, 8), { fill: c, key, line: DSB.line, w: 3, tex: [{ k: 'pencil', c: DSB.surface2, al: 0.35, per: 80 }] });
   },
-  hero(x, y, r, o) { dsHero(x, y, r * 0.7, o); },                     // r = half the hero's size, in world coords
+  hero(x, y, r, o) { /* removed in the rebuild — the round circle was a v1 leftover */ },
   heroColor: DSB.ink,
-  heroPts: (x, y, r) => dsHeroOutline(x, y, r * 0.7),
-  post() { dsGrain(1600, 0.08); },                                    // sparse grain pass
+  heroPts: (x, y, r) => ellipsePts(x, y, r, r * 0.95, 0, 96),
+  post() { dsGrain(2400, 0.12); },                                    // denser grain for a more cinematic feel
   ones: false,                                                        // motion on 2s
 };

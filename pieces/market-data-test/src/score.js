@@ -1,34 +1,30 @@
-  // SCORE BODY — market-data-test v2 (inside buildScore(); see kit/score-head.js)
-  // 12s, 120 BPM, upbeat dancey: a nervous pulse for the problem, a resolved chord stab for the payoff.
+  // SCORE BODY — market-data-test v3. 140 BPM, more energy.
+  // Driving kick on every quarter, 16th-note plucks, a bigger drop on the reveal.
   const T = TIMELINE, cu = T.cues;
   to = 'm';
-  // era 1: nervous low pulse (the chaos) + occasional dissonant plucks (price jumps)
+  // driving kick on every quarter (0-6s)
   for (let bar = 0; bar < 6; bar++) {
-    noiseHit(bar * BEAT, 0.04, 'lowpass', 100, 6, 0.05, -0.08);                 // soft kick
-    noiseHit(bar * BEAT + BEAT / 2, 0.03, 'bandpass', 300, 4, 0.04, -0.12);         // off-beat blip
+    noiseHit(bar * BEAT, 0.05, 'lowpass', 100, 8, 0.08, -0.02);
   }
-  // the two price-jump moments: a dissonant pluck on each
-  pluck(cu.jump1, nz('Ds5'), 0.05, 0.0, 0.25, 3200, 0.18);
-  pluck(cu.jump2, nz('Fs5'), 0.05, 0.0, 0.25, 3200, 0.18);
-  // a quiet pad through era 1
-  pad(0.0, 6.0, ['D3', 'A3', 'F4'], 0.025, { type: 'triangle', cut: 900, att: 0.05, rel: 0.2, send: 0.3 });
-  // the sweep into the morph (5.7 - 6.3)
-  sweep(5.7, 6.3, 0.012, 400, 3200, 0);
-  // era 2: a fuller, brighter score (the fix)
-  for (let bar = 0; bar < 6; bar++) {
-    noiseHit(6.0 + bar * BEAT, 0.05, 'lowpass', 120, 8, 0.06, -0.04);            // kick
-  }
-  pad(6.0, 12.0, ['D3', 'A3', 'F4', 'C5'], 0.030, { type: 'sawtooth', cut: 2200, att: 0.05, rel: 0.2, send: 0.3 });
-  // 8th-note plucks for the dancey feel
-  for (let i = 0; i < 24; i++) {
-    const t = 6.0 + i * E8;
-    if (t < DURATION) pluck(t, 880 + (i % 4) * 110, 0.025, 0.0, 0.18, 2400, 0.22);
-  }
+  // 16th-note plucks through the hook (0-2.4s)
+  for (let i = 0; i < 9; i++) pluck(0.2 + i * 0.25, nz(['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6', 'E6', 'G6'][i % 9]), 0.04, 0.0, 0.18, 2600, 0.22);
+  // a quieter pad through the sharpen (1.6-3.0s)
+  pad(0.0, 4.2, ['D3', 'A3', 'F4'], 0.030, { type: 'sawtooth', cut: 1400, att: 0.05, rel: 0.15, send: 0.2 });
+  // the DROP at 4.2s — a bandpass noise hit + a chord stab
   to = 's';
-  // candle-by-candle chimes (6.8 - 7.4)
-  for (let i = 0; i < 16; i++) blip(6.8 + i * 0.04, 1600 + i * 60, 400, 0.015, 0.03);
-  // order book row reveals (7.6 - 8.6)
-  for (let i = 0; i < 5; i++) blip(7.6 + i * 0.1, 1400, 600, 0.02, 0.04);
-  for (let i = 0; i < 5; i++) blip(7.9 + i * 0.1, 1200, 600, 0.02, 0.04);
-  // the payoff hit on the gerowallet.io CTA (10.4)
-  noiseHit(10.4, 0.04, 'bandpass', 800, 4, 0.07, -0.05);
+  noiseHit(4.2, 0.08, 'bandpass', 600, 6, 0.12, 0);
+  noiseHit(4.3, 0.06, 'lowpass', 100, 6, 0.10, -0.02);
+  to = 'm';
+  // a bigger chord stab
+  pluck(4.2, nz('C4'), 0.06, 0.0, 0.60, 1200, 0.35);
+  pluck(4.25, nz('E4'), 0.06, 0.0, 0.60, 1200, 0.35);
+  pluck(4.3, nz('G4'), 0.06, 0.0, 0.60, 1200, 0.35);
+  pluck(4.35, nz('C5'), 0.06, 0.0, 0.60, 1200, 0.35);
+  pluck(4.4, nz('E5'), 0.06, 0.0, 0.60, 1200, 0.35);
+  // 16th-note plucks through the reveal
+  for (let i = 0; i < 14; i++) pluck(4.5 + i * 0.25, nz(['C5', 'E5', 'G5', 'A5'][i % 4]), 0.04, 0.0, 0.20, 2400, 0.25);
+  // a softer pad through the pay (8-10s)
+  pad(8.0, 10.0, ['D3', 'A3', 'F4', 'C5'], 0.030, { type: 'triangle', cut: 1200, att: 0.05, rel: 0.2, send: 0.2 });
+  // a CTA stab
+  noiseHit(10.2, 0.05, 'bandpass', 800, 4, 0.08, -0.03);
+  pluck(10.2, nz('A4'), 0.05, 0.0, 0.30, 2000, 0.25);

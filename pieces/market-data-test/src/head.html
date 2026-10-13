@@ -32,34 +32,33 @@ const HAND = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", A
 const CX = 540;
 
 const ERA_LIST = [
-  [0,  6,  () => sceneProblem()],
-  [6, 12,  () => sceneFix()],
+  [0,   2.4, () => sceneHook()],
+  [2.4, 3.0, () => sceneSharpen()],
+  [3.0, 4.2, () => sceneReveal()],
+  [4.2, 8.0, () => sceneReveal()],
+  [8.0, 10.0, () => scenePay()],
+  [10.0, 12.0, () => sceneCta()],
 ];
 const SHOTS = [
-  ['problem', 0, 0.0,  6.0, '5 tabs, 5 prices, one token — the chaos'],
-  ['fix',     1, 6.0, 12.0, 'one wallet, every venue — the fix'],
+  ['hook',    0, 0.0,  2.4,  'the question'],
+  ['sharpen', 1, 2.4,  3.0,  'not ADA, not SNEK'],
+  ['reveal',  2, 3.0,  4.2,  'all 11 venues'],
+  ['reveal',  3, 4.2,  8.0,  'all 11 venues'],
+  ['pay',     4, 8.0, 10.0,  'one tab'],
+  ['cta',     5, 10.0, 12.0, 'market tab CTA'],
 ];
 const TIMELINE = {
   width: W, height: H, fps: FPS, bpm: BPM, duration: DURATION, frames: NFRAMES, loop: LOOP_T, safe: SAFE,
-  format: 'problem-then-fix',
+  format: 'frame-sequence-v3',
   shots: SHOTS.map(([key, era, t0, t1, title], i) => ({ id: i + 1, key, era, t0, t1, title })),
-  cuts: [0.0, 6.0],
-  morphs: [6.0],
+  cuts: [0.0, 2.4, 3.0, 4.2, 8.0, 10.0],
+  morphs: [],
   cues: {
-    // era 1
-    q1:        0.20,
-    tabs:      0.40,
-    jump1:     1.20,
-    jump2:     2.20,
-    q2:        3.20,
-    labels:    3.50,
-    better:    4.80,
-    // era 2
-    fix:       6.20,
-    chart:     6.80,
-    book:      7.60,
-    stat:      9.40,
-    pill:     10.40,
+    hook:    0.20,
+    sharpen: 2.60,
+    reveal:  3.20,
+    pay:     8.20,
+    cta:    10.20,
   },
   acts: [
     { name: '1 Problem', role: 'build',   t0: 0.0, t1: 3.0 },

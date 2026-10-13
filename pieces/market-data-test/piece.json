@@ -1,15 +1,15 @@
 {
   "name": "market-data-test",
-  "title": "Market Data in Gero — 12s test",
-  "format": { "width": 1080, "height": 1920, "fps": 24, "bpm": 120, "duration": 12.0, "frames": 288 },
-  "storyFormat": "F4 mission (4 beats + payoff, cuts on the beat)",
+  "title": "Market Data in Gero — 12s (v3 rebuild)",
+  "format": { "width": 1080, "height": 1920, "fps": 24, "bpm": 140, "duration": 12.0, "frames": 288 },
+  "storyFormat": "frame sequence (new format): hook -> sharpen -> reveal (full-viewport screenshot) -> pay -> CTA",
   "style": "thedigitalstag",
   "brand": "thedigitalstag",
   "voice": null,
   "review": { "safe": { "top": 240, "bottom": 420, "right": 140 }, "refs": {} },
   "captions": {
-    "twitter": "5 sites. 5 ADA prices. One is right. Four aren't. Gero reads all 11. gerowallet.io/wallet/market-data/",
-    "instagram": "5 sites. 5 ADA prices. One is right. Four aren't.\n\nGero reads all 11. Shows you one.\n\nThe Market tab in Gero is fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles, order books, and trades, all in your non-custodial wallet.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX",
-    "youtube": "5 sites. 5 ADA prices. One is right. Four aren't.\n\nGero reads all 11. Shows you one.\n\nThe Market tab in Gero is fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles with indicators, order books, and trades, all in one non-custodial wallet whose code is public.\n\nWhy does ADA cost 5 different prices on 5 different sites? Because 5 DEXes have 5 order books. Gero reads them all in one place.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+    "twitter": "5 sites. 5 prices. One's right. Gero reads all 11. gerowallet.io/wallet/market-data/",
+    "instagram": "5 sites. 5 prices. One's right.\n\nGero reads all 11. Shows you one.\n\nThe Market tab in Gero is fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles, order books, and trades, all in your non-custodial wallet.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX",
+    "youtube": "5 sites. 5 prices. One's right.\n\nGero reads all 11. Shows you one.\n\nThe Market tab in Gero is fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles with indicators, order books, and trades, all in one non-custodial wallet whose code is public.\n\n🔗 gerowallet.io/wallet/market-data/\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
   }
 }
