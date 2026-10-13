@@ -984,19 +984,21 @@ function dsCandle(cx, cyTop, bodyH, wickH, bullish, key) {
 // =====================================================================
 function sceneProblem() {
   dsBackdrop();
-  // the question (curiosity hook)
-  const q1a = 'Switching tabs to';
-  const q1b = 'track one token?';
+  // the question (curiosity hook) — punchier, more specific, more surprising
+  const q1a = '5 sites. 5 ADA prices.';
+  const q1b = 'One is right. Four aren’t.';
   const showQ1 = clamp((TT - 0.2) / 0.35);
   if (showQ1 > 0) {
     ctx.save();
     ctx.globalAlpha = showQ1;
-    ctx.font = `700 80px ${DSF}`;
+    ctx.font = `700 76px ${DSF}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     ctx.fillStyle = DSB.type;
     ctx.fillText(q1a, 70, 320);
-    ctx.fillText(q1b, 70, 320 + 92);
+    // the second line: "Four aren't" in cyan for emphasis
+    ctx.fillStyle = DSB.cyan;
+    ctx.fillText(q1b, 70, 320 + 88);
     ctx.restore();
   }
   // the 5 fake tabs

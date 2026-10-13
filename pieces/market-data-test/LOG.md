@@ -21,21 +21,22 @@ What changed in v2:
 - Pieces now include `pieces/<name>/assets/stag-circle.png` (copied from the brand folder)
 - Hero is still a code-drawn small spot at the bottom (different element from the logo)
 
-## 2026-10-13 — v2.1 (corrections after fit50 comparison)
+## 2026-10-13 — v2.2 (more feedback)
 
 User feedback:
-- No progress indicator (content posted in 1 day, not across days)
-- No "Tomorrow" loop tease (same reason)
-- Tagline: "Independent Gero content" mentions a separate brand (Gero) — should be about our own space, stag-themed
+- "Independent Gero content creator" disclaimer mentions a separate brand — soften or remove
+- "Switching tabs to track one token?" hook is boring, doesn't grab attention, unclear what it's about
+- "Locking horns with digital assets" tagline is good, keep it
 
 What changed:
-- Removed the "Tomorrow: a 60-second order book / Part 2 of the Gero series" tease from era 2
-- New tagline: **"Locking horns with digital assets"** (stag play, about our own space)
-  - Updated in `styles/thedigitalstag/kit.js` `dsWatermark()` (visible under the wordmark in every piece)
-  - Added to `brands/thedigitalstag/palette.json` as `tagline`
-  - Added to `brands/thedigitalstag/BRAND.md` next to the disclaimer section
-  - Captions (IG) updated to remove the "Tomorrow" reference
-- The disclaimer still reads "Independent Gero content creator..." — that's correct (it's a *disclosure* of independence, not a tagline)
+- Disclaimer softened: "Fan content. GeroWallet is a trademark of A.D. Labs LTD." (shorter, less Gero-heavy, still legally protective)
+- New curiosity hook: **"5 sites. 5 ADA prices. / One is right. Four aren't."** (second line in cyan)
+  - Specific (ADA, 5 sites, 5 prices)
+  - Surprising (why are there 5 different prices?)
+  - Creates tension (one is right, four aren't)
+  - Implies a problem the viewer has
+- Captions updated to match the new hook
+- The tagline "Locking horns with digital assets" stays under the wordmark in the watermark
 
 ## Open / follow-ups
 

@@ -17,7 +17,7 @@ A 12s 9:16 piece for thedigitalstag, explaining https://gerowallet.io/wallet/mar
 
 | t      | shot    | what happens |
 |--------|---------|--------------|
-| 0.2    | problem | "Switching tabs to track / one token?" (the question) |
+| 0.2    | problem | "5 sites. 5 ADA prices. / One is right. Four aren't." (the curiosity hook, second line in cyan) |
 | 0.4    | problem | 6 fake browser tabs pop in: MuesliSwap, SundaeSwap (active), WingRiders, VyFinance, MinSwap, Spectrum |
 | 1.2    | problem | First price jump — a dissonant pluck, all 6 prices change |
 | 2.2    | problem | Second price jump — all 6 prices change again (the chaos) |

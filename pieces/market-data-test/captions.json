@@ -1,16 +1,17 @@
 {
-  "_note": "Platform-ready captions for the market-data-test piece v2. Source: refs/gero-source/gero deepdive + the live Gero market-data page.",
+  "_note": "Platform-ready captions for the market-data-test piece v2.2. Source: refs/gero-source/gero deepdive + the live Gero market-data page.",
   "twitter": {
     "max_chars": 280,
-    "text": "Switching tabs to track one token? Gero has every venue in one tab. 11 DEX venues, real order books, real trades. gerowallet.io/wallet/market-data/"
+    "text": "5 sites. 5 ADA prices. One is right. Four aren't. Gero reads all 11. gerowallet.io/wallet/market-data/"
   },
   "instagram": {
     "max_chars": 2200,
-    "text": "Switching tabs to track one token?\n\nGero has every venue in one tab. 11 Cardano DEX venues, real order books, real trades — all in your non-custodial wallet.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+    "text": "5 sites. 5 ADA prices. One is right. Four aren't.\n\nGero reads all 11. Shows you one.\n\nThe Market tab in Gero is fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles, order books, and trades, all in your non-custodial wallet.\n\nFan content. GeroWallet is a trademark of A.D. Labs LTD.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
   },
   "youtube": {
     "max_chars": 5000,
-    "text": "Switching tabs to track one token?\n\nGero has every venue in one tab. The Market tab and every token page in the wallet are fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles with indicators, order books, and trades, all in one non-custodial wallet whose code is public.\n\nSwitching from one site to another to track the same token is the problem. Gero is the fix.\n\n🔗 gerowallet.io/wallet/market-data/\n\nIndependent Gero content creator. Not affiliated with GeroWallet / A.D. Labs LTD.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
+    "text": "5 sites. 5 ADA prices. One is right. Four aren't.\n\nGero reads all 11. Shows you one.\n\nThe Market tab in Gero is fed by Nexus — indexed from 11 Cardano DEX venues, checked against real trades. Live prices, candles with indicators, order books, and trades, all in one non-custodial wallet whose code is public.\n\nWhy does ADA cost 5 different prices on 5 different sites? Because 5 DEXes have 5 order books. Gero reads them all in one place.\n\n🔗 gerowallet.io/wallet/market-data/\n\nFan content. GeroWallet is a trademark of A.D. Labs LTD.\n\n#Gero #GeroWallet #Cardano #Crypto #Web3 #DEX"
   },
-  "disclaimer": "Independent Gero content creator. Not affiliated with GeroWallet / A.D. Labs LTD."
+  "disclaimer": "Fan content. GeroWallet is a trademark of A.D. Labs LTD."
 }
+
