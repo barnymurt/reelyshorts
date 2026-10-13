@@ -1,163 +1,101 @@
 // =====================================================================
-//  SCENES — market-data-spread (#4). 6 hard-cut frames.
-//  1 hook, 2 sharpen, 3 liquidity, 4 reveal, 5 pay, 6 cta.
+//  SCENES — market-data-spread v3. Same format as #1-#3.
 // =====================================================================
 
 let _REVEAL_IMG = null;
 
-function dsFrame(text, opts = {}) {
-  const lines = text.split('\n');
-  const size = opts.size ?? 120;
-  const yStart = opts.yStart ?? (H / 2 - (lines.length - 1) * size * 0.6);
+function dsBigLine(words, opts = {}) {
+  const size = opts.size ?? 160;
+  const x = opts.x ?? 80;
+  const y = opts.y ?? 720;
+  dsGlow(x + 50, y - size * 0.4, size * 4, opts.glowColor || DSB.glow, opts.glowAl || 0.55);
   ctx.save();
-  ctx.font = `700 ${size}px ${DSF}`;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const c = (opts.color && opts.color[i]) || opts.color || DSB.type;
-    ctx.fillStyle = c;
-    ctx.fillText(line, CX, yStart + i * size * 1.05);
-  }
+  ctx.font = `800 ${size}px ${DSF}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.shadowColor = opts.color || DSB.paper;
+  ctx.shadowBlur = 28;
+  ctx.fillStyle = opts.color || DSB.paper;
+  ctx.fillText(words, x, y);
+  ctx.shadowBlur = 0;
+  ctx.fillText(words, x, y);
   ctx.restore();
 }
 
-// =====================================================================
-//  1 HOOK — "3 tokens. Same minute. 3 prices."
-// =====================================================================
+// 1 HOOK — "3 tokens. / Same minute. / 3 prices."
 function sceneHook() {
   dsBackdrop();
-  const show = clamp((TT - 0.2) / 0.3);
-  if (show > 0) {
-    ctx.save();
-    ctx.globalAlpha = show;
-    dsFrame('3 tokens.', { size: 100, yStart: 660 });
-    dsFrame('Same minute.', { size: 100, yStart: 660 + 100 * 1.05 });
-    dsFrame('3 prices.', { size: 100, yStart: 660 + 200 * 1.05, color: DSB.cyan });
-    ctx.restore();
-  }
-  dsWatermark();
-}
-
-// =====================================================================
-//  2 SHARPEN — "Why?"
-// =====================================================================
-function sceneSharpen() {
-  dsBackdrop();
-  const show = clamp((TT - 1.7) / 0.2);
-  if (show > 0) {
-    ctx.save();
-    ctx.globalAlpha = show;
-    dsFrame('Why?', { size: 220, yStart: 920, color: DSB.cyan });
-    ctx.restore();
-  }
-  dsWatermark();
-}
-
-// =====================================================================
-//  3 LIQUIDITY — "Liquidity is split across 11 DEXes."
-// =====================================================================
-function sceneLiquidity() {
-  dsBackdrop();
-  const show = clamp((TT - 3.0) / 0.3);
-  if (show > 0) {
-    ctx.save();
-    ctx.globalAlpha = show;
-    dsFrame('Liquidity is split', { size: 80, yStart: 760 });
-    dsFrame('across 11 DEXes.', { size: 80, yStart: 760 + 80 * 1.05, color: DSB.cyan });
-    ctx.restore();
-  }
-  dsWatermark();
-}
-
-// =====================================================================
-//  4 REVEAL — the Gero screenshot
-// =====================================================================
-function sceneReveal() {
-  if (!_REVEAL_IMG) {
-    const im = asset('gero-reveal.png');
-    if (!im) return;
-    _REVEAL_IMG = im;
-  }
-  const pop = clamp((TT - 4.4) / 0.25);
+  dsBigLine('3 tokens.', { size: 180, y: 560, color: DSB.paper, glowAl: 0.4 });
+  dsBigLine('Same minute.', { size: 140, y: 760, color: DSB.paper, glowAl: 0.4 });
+  const pop = popS(0.6);
   if (pop > 0) {
     ctx.save();
     ctx.globalAlpha = pop;
-    const w = 1080, h = 1080;
-    const x = 0, y = (H - h) / 2;
-    ctx.drawImage(_REVEAL_IMG, x, y, w, h);
-    ctx.strokeStyle = DSB.cyan;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
-    ctx.restore();
-  }
-  const cap = clamp((TT - 4.8) / 0.35);
-  if (cap > 0) {
-    ctx.save();
-    ctx.globalAlpha = cap;
-    ctx.font = `600 38px ${DSF}`;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = DSB.cyan;
-    ctx.fillText('Live from gerowallet.io', CX, 320);
+    dsBigLine('3 prices.', { size: 200, y: 940, color: DSB.cyanHi, glowAl: 0.6 });
     ctx.restore();
   }
   dsWatermark();
 }
 
-// =====================================================================
-//  5 PAY — "Gero shows you all of them."
-// =====================================================================
+// 2 REVEAL — the Gero screenshot. MUSIC DROP.
+function sceneReveal() {
+  if (!_REVEAL_IMG) {
+    const im = asset('gero-fullpage.png');
+    if (!im) return;
+    _REVEAL_IMG = im;
+  }
+  const a = clamp((TT - 3.0) / 0.3);
+  if (a > 0) {
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.drawImage(_REVEAL_IMG, 0, 0, W, H);
+    ctx.restore();
+  }
+  const cap = popS(0.4);
+  if (cap > 0) {
+    dsBigLine('11 venues.', { size: 140, y: 220, color: DSB.cyanHi, glowAl: 0.7, x: 80 });
+    ctx.save();
+    ctx.font = `500 32px ${DSF}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DSB.paper;
+    ctx.fillText('Liquidity is split. Gero reads them all.', 80, 380);
+    ctx.restore();
+  }
+  dsWatermark();
+}
+
+// 3 PAY — "Gero shows / you all of them."
 function scenePay() {
   dsBackdrop();
-  const show = clamp((TT - 8.0) / 0.3);
-  if (show > 0) {
+  dsBigLine('Gero shows', { size: 160, y: 700, color: DSB.paper, glowAl: 0.4 });
+  const pop = popS(0.3);
+  if (pop > 0) {
     ctx.save();
-    ctx.globalAlpha = show;
-    dsFrame('Gero shows you', { size: 100, yStart: 760 });
-    dsFrame('all of them.', { size: 100, yStart: 760 + 100 * 1.05, color: DSB.cyan });
+    ctx.globalAlpha = pop;
+    dsBigLine('you all.', { size: 200, y: 880, color: DSB.cyanHi, glowAl: 0.6 });
     ctx.restore();
   }
   dsWatermark();
 }
 
-// =====================================================================
-//  6 CTA — "Gero Wallet -> Market tab" + teaser for #5
-// =====================================================================
+// 4 CTA
 function sceneCta() {
   dsBackdrop();
-  const cta = popS(TIMELINE.cues.cta);
-  if (cta > 0) {
+  dsBigLine('Open it.', { size: 200, y: 680, color: DSB.paper, glowAl: 0.5 });
+  const pillPop = popS(0.4);
+  if (pillPop > 0) {
     ctx.save();
-    ctx.globalAlpha = cta;
-    dsPill('gerowallet.io/wallet/market-data', CX, 900, 30);
+    ctx.globalAlpha = pillPop;
+    dsPill('gerowallet.io/wallet/market-data', CX, 960, 36);
     ctx.restore();
   }
-  const label = clamp((TT - 10.0) / 0.3);
-  if (label > 0) {
-    ctx.save();
-    ctx.globalAlpha = label;
-    ctx.font = `600 36px ${DSF}`;
-    ctx.textBaseline = 'bottom';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = DSB.muted;
-    ctx.fillText('Gero Wallet  →  Market tab', CX, 860);
-    ctx.restore();
-  }
-  // teaser for #5 (P&L)
-  const tease = popS(TIMELINE.cues.teaser);
-  if (tease > 0) {
-    ctx.save();
-    ctx.globalAlpha = tease;
-    ctx.font = `500 30px ${DSF}`;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = DSB.muted;
-    ctx.fillText('Next: are you up on Cardano in under 10 seconds?', CX, 1080);
-    ctx.font = `400 40px ${DSF}`;
-    ctx.fillText('↓', CX, 1120);
-    ctx.restore();
-  }
-  dsHero(540, 1380, 50, { key: 'h7', mood: 'wow' });
+  ctx.save();
+  ctx.font = `500 28px ${DSF}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = DSB.muted;
+  ctx.fillText('Locking horns with digital assets', CX, 1300);
+  ctx.restore();
   dsWatermark();
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>market-data-orderbook — 12s</title>
+<title>market-data-orderbook — 12s (v3)</title>
 <style>
   html, body { margin: 0; height: 100%; background: #0E1A28; overflow: hidden; }
   body { display: flex; align-items: center; justify-content: center; }
@@ -15,17 +15,11 @@
 <script>
 "use strict";
 // =====================================================================
-//  MARKET DATA ORDERBOOK (#3 in the series) — 9:16, 12.0s @ 120 BPM, 24fps.
-//  Frame sequence:
-//    1 (0-2.4s)   HOOK: "You're only seeing half the order book."
-//    2 (2.4-4.2s) SHARPEN: "That's one venue." + a thin hand-drawn single-DEX order book (greyed out)
-//    3 (4.2-8.0s) REVEAL: the Gero screenshot showing all 11 DEXes. MUSIC DROP at 4.2s.
-//    4 (8-10s)    PAY: "Every trade. Every venue. One view."
-//    5 (10-12s)   CTA: "Gero Wallet -> Market tab" + teaser for #4
-//  Build: node tools/animate/tools/build.mjs pieces/market-data-orderbook
+//  MARKET DATA ORDERBOOK (#3 v3) — 9:16, 12.0s @ 140 BPM, 24fps.
+//  Frame sequence: hook -> reveal -> pay -> cta. Hard cuts, no morphs.
 // =====================================================================
 const FPS = 24, W = 1080, H = 1920;
-const BPM = 120, BEAT = 60 / BPM, E8 = BEAT / 2, E16 = BEAT / 4;
+const BPM = 140, BEAT = 60 / BPM, E8 = BEAT / 2, E16 = BEAT / 4;
 const DURATION = 12.0;
 const NFRAMES = Math.round(DURATION * FPS);
 const LOOP_T = NFRAMES / FPS;
@@ -34,42 +28,33 @@ const HAND = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", A
 const CX = 540;
 
 const ERA_LIST = [
-  [0,   2.4, () => sceneHook()],
-  [2.4, 4.2, () => sceneSharpen()],
-  [4.2, 8.0, () => sceneReveal()],
+  [0,  3.0, () => sceneHook()],
+  [3.0, 8.0, () => sceneReveal()],
   [8.0, 10.0, () => scenePay()],
   [10.0, 12.0, () => sceneCta()],
 ];
 const SHOTS = [
-  ['hook',    0, 0.0,  2.4,  'the question'],
-  ['sharpen', 1, 2.4,  4.2,  'one venue, thin book'],
-  ['reveal',  2, 4.2,  8.0,  'all 11 venues'],
-  ['pay',     3, 8.0, 10.0,  'every trade'],
-  ['cta',     4, 10.0, 12.0, 'market tab CTA'],
+  ['hook',   0, 0.0,  3.0,  'half the book'],
+  ['reveal', 1, 3.0,  8.0,  'all 11 venues'],
+  ['pay',    2, 8.0, 10.0,  'one view'],
+  ['cta',    3, 10.0, 12.0, 'market tab CTA'],
 ];
 const TIMELINE = {
   width: W, height: H, fps: FPS, bpm: BPM, duration: DURATION, frames: NFRAMES, loop: LOOP_T, safe: SAFE,
-  format: 'frame-sequence',
+  format: 'frame-sequence-v3',
   shots: SHOTS.map(([key, era, t0, t1, title], i) => ({ id: i + 1, key, era, t0, t1, title })),
-  cuts: [0.0, 2.4, 4.2, 8.0, 10.0],
+  cuts: [0.0, 3.0, 8.0, 10.0],
   morphs: [],
-  cues: {
-    hook:       0.20,
-    sharpen:    2.60,
-    reveal:     4.40,
-    pay:        8.20,
-    cta:       10.20,
-    teaser:    10.80,
-  },
+  cues: { hook: 0.20, reveal: 3.20, pay: 8.20, cta: 10.20 },
   acts: [
-    { name: '1 Hook',     role: 'build',  t0: 0.0, t1: 4.2 },
-    { name: '2 Reveal',   role: 'gift',   t0: 4.2, t1: 8.0 },
+    { name: '1 Hook',     role: 'build',  t0: 0.0, t1: 3.0 },
+    { name: '2 Reveal',   role: 'gift',   t0: 3.0, t1: 8.0 },
     { name: '3 Pay+CTA',  role: 'goodbye',t0: 8.0, t1: 12.0 },
   ],
   board: [
-    { t: 2.0,  title: "You're only seeing half the order book",  sound: 'soft plucks',     next: "That's one venue" },
-    { t: 5.0,  title: 'all 11 venues',                            sound: 'DROP + chord stab', next: 'Every trade. Every venue. One view.' },
-    { t: 10.5, title: 'gerowallet.io/wallet/market-data',          sound: 'a soft stab',      next: 'loops' },
+    { t: 2.0,  title: "You're seeing half the book",  sound: 'soft plucks',     next: "That's 1 venue" },
+    { t: 5.0,  title: 'Gero reads all 11',            sound: 'DROP + chord stab', next: 'Every trade. One view.' },
+    { t: 10.5, title: 'gerowallet.io/wallet/market-data', sound: 'a soft stab',      next: 'loops' },
   ],
   narration: [],
 };
